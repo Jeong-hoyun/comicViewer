@@ -18,10 +18,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            ComicViewerTheme {
+            // 참고 앱과 같은 다크 톤을 기본으로 사용 (다크/라이트 토글은 로드맵 5번 예정).
+            ComicViewerTheme(darkTheme = true) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     LibraryScreen()
                 }
