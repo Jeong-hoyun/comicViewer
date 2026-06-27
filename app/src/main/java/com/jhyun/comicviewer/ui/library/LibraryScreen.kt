@@ -19,17 +19,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Menu
@@ -105,6 +111,7 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
     var selectedTab by rememberSaveable { mutableIntStateOf(LibraryTab.Storage.ordinal) }
     var overflowOpen by remember { mutableStateOf(false) }
     var sortOpen by remember { mutableStateOf(false) }
+    var gridMode by rememberSaveable { mutableStateOf(true) }
 
     val pickFolder =
         rememberLauncherForActivityResult(
@@ -150,6 +157,12 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                                     )
                                 }
                             }
+                        }
+                        IconButton(onClick = { gridMode = !gridMode }) {
+                            Icon(
+                                if (gridMode) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                contentDescription = if (gridMode) "리스트 보기" else "그리드 보기",
+                            )
                         }
                         IconButton(onClick = { overflowOpen = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "더보기")
@@ -215,6 +228,7 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                         DirectoryTab(
                             state = directory,
                             sortOrder = sortOrder,
+                            gridMode = gridMode,
                             onBrowseInto = viewModel::browseInto,
                             onPreview = viewModel::showPreview,
                             onUp = viewModel::browseUp,
@@ -321,6 +335,7 @@ private fun StorageTab(
 private fun DirectoryTab(
     state: DirectoryUiState,
     sortOrder: SortOrder,
+    gridMode: Boolean,
     onBrowseInto: (FolderEntry) -> Unit,
     onPreview: (FolderEntry) -> Unit,
     onUp: () -> Unit,
@@ -361,79 +376,168 @@ private fun DirectoryTab(
                     state.subfolders.sortedWith(comparator)
                 }
 
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                item {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    ) {
-                        if (state.canGoUp) {
-                            IconButton(onClick = onUp) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "상위 폴더")
-                            }
+            // selfComic(현재 폴더 자체) 을 맨 앞에 둔 전체 항목.
+            val cells = remember(entries, state.selfComic) { listOfNotNull(state.selfComic) + entries }
+            val isEmpty = cells.isEmpty()
+
+            if (gridMode) {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 112.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        DirectoryHeader(state.title, state.canGoUp, onUp)
+                    }
+                    if (isEmpty) {
+                        item(span = { GridItemSpan(maxLineSpan) }) { EmptyDirectoryMessage() }
+                    }
+                    items(cells, key = { it.documentId }) { entry ->
+                        if (entry.isComic) {
+                            ComicCard(entry, onClick = { onPreview(entry) })
+                        } else {
+                            FolderCard(entry, onClick = { onBrowseInto(entry) })
                         }
-                        Text(
-                            state.title,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier =
-                                Modifier.padding(
-                                    start = if (state.canGoUp) 0.dp else 16.dp,
-                                    top = 12.dp,
-                                    bottom = 12.dp,
-                                    end = 16.dp,
-                                ),
-                        )
-                    }
-                    HorizontalDivider()
-                }
-
-                // 현재 폴더 자체가 이미지만 있는 만화인 경우.
-                state.selfComic?.let { comic ->
-                    item { ComicRow(comic, onClick = { onPreview(comic) }) }
-                }
-
-                if (state.subfolders.isEmpty() && state.selfComic == null) {
-                    item {
-                        Text(
-                            "이 폴더에는 표시할 만화나 하위 폴더가 없어요.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp),
-                        )
                     }
                 }
-
-                items(entries, key = { it.documentId }) { entry ->
-                    if (entry.isComic) {
-                        ComicRow(entry, onClick = { onPreview(entry) })
-                    } else {
-                        ListItem(
-                            headlineContent = {
-                                Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            },
-                            supportingContent = {
-                                if (entry.imageCount > 0) {
-                                    Text("이미지 ${entry.imageCount}개 + 하위 폴더")
-                                } else {
-                                    Text("하위 폴더")
-                                }
-                            },
-                            leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onBrowseInto(entry) },
-                            colors =
-                                ListItemDefaults.colors(
-                                    containerColor = MaterialTheme.colorScheme.background,
-                                ),
-                        )
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    item { DirectoryHeader(state.title, state.canGoUp, onUp) }
+                    if (isEmpty) {
+                        item { EmptyDirectoryMessage() }
+                    }
+                    items(cells, key = { it.documentId }) { entry ->
+                        if (entry.isComic) {
+                            ComicRow(entry, onClick = { onPreview(entry) })
+                        } else {
+                            FolderRow(entry, onClick = { onBrowseInto(entry) })
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun DirectoryHeader(
+    title: String,
+    canGoUp: Boolean,
+    onUp: () -> Unit,
+) {
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        ) {
+            if (canGoUp) {
+                IconButton(onClick = onUp) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "상위 폴더")
+                }
+            }
+            Text(
+                title,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier.padding(
+                        start = if (canGoUp) 0.dp else 16.dp,
+                        top = 12.dp,
+                        bottom = 12.dp,
+                        end = 16.dp,
+                    ),
+            )
+        }
+        HorizontalDivider()
+    }
+}
+
+@Composable
+private fun EmptyDirectoryMessage() {
+    Text(
+        "이 폴더에는 표시할 만화나 하위 폴더가 없어요.",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(16.dp),
+    )
+}
+
+/** 그리드: 표지 카드(만화 1권). */
+@Composable
+private fun ComicCard(
+    entry: FolderEntry,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(6.dp),
+    ) {
+        CoverThumbnail(
+            cover = entry.cover,
+            modifier = Modifier.fillMaxWidth().aspectRatio(0.72f),
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(
+            "${entry.imageCount}p",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** 그리드: 하위 폴더 카드(탐색). */
+@Composable
+private fun FolderCard(
+    entry: FolderEntry,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(6.dp),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.72f)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.Folder,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.size(4.dp))
+        Text(entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** 리스트: 하위 폴더 행(탐색). */
+@Composable
+private fun FolderRow(
+    entry: FolderEntry,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = {
+            if (entry.imageCount > 0) Text("이미지 ${entry.imageCount}개 + 하위 폴더") else Text("하위 폴더")
+        },
+        leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable { onClick() },
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+    )
 }
 
 /** 표지 썸네일 + 제목 + 페이지 수 (만화 1권 행). */
