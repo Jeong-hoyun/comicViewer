@@ -92,10 +92,13 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.robolectric)
 
-    // 계측 테스트 (Phase 2 — Room DAO)
+    // 계측 테스트 (Phase 2 — Room DAO / Phase 3 — Compose UI)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.truth)
     androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.turbine)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
