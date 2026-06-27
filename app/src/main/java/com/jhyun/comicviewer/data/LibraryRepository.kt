@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import com.jhyun.comicviewer.data.local.BookmarkDao
+import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.data.local.ReadingProgressDao
 import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderDao
@@ -52,6 +54,16 @@ interface LibraryRepository {
         page: Int,
         pageCount: Int,
     )
+
+    /** 모든 책갈피, 최신순. */
+    val bookmarks: Flow<List<BookmarkEntity>>
+
+    /** 해당 페이지 책갈피를 토글하고, 토글 후 책갈피 상태(true=추가됨)를 반환합니다. */
+    suspend fun toggleBookmark(
+        treeUri: Uri,
+        entry: FolderEntry,
+        page: Int,
+    ): Boolean
 }
 
 @Singleton
@@ -60,12 +72,15 @@ class LibraryRepositoryImpl
     constructor(
         private val dao: SourceFolderDao,
         private val progressDao: ReadingProgressDao,
+        private val bookmarkDao: BookmarkDao,
         private val scanner: SafScanner,
         @ApplicationContext private val context: Context,
     ) : LibraryRepository {
         override val folders: Flow<List<SourceFolderEntity>> = dao.observeAll()
 
         override val recentlyRead: Flow<List<ReadingProgressEntity>> = progressDao.observeAll()
+
+        override val bookmarks: Flow<List<BookmarkEntity>> = bookmarkDao.observeAll()
 
         override suspend fun addFolder(treeUri: Uri): String {
             context.contentResolver.takePersistableUriPermission(
@@ -137,5 +152,30 @@ class LibraryRepositoryImpl
                     updatedAt = System.currentTimeMillis(),
                 ),
             )
+        }
+
+        override suspend fun toggleBookmark(
+            treeUri: Uri,
+            entry: FolderEntry,
+            page: Int,
+        ): Boolean {
+            val existing = bookmarkDao.get(entry.uri.toString(), page)
+            return if (existing != null) {
+                bookmarkDao.delete(existing)
+                false
+            } else {
+                bookmarkDao.insert(
+                    BookmarkEntity(
+                        comicUri = entry.uri.toString(),
+                        treeUri = treeUri.toString(),
+                        docId = entry.documentId,
+                        name = entry.name,
+                        isArchive = entry.isArchive,
+                        page = page,
+                        createdAt = System.currentTimeMillis(),
+                    ),
+                )
+                true
+            }
         }
     }

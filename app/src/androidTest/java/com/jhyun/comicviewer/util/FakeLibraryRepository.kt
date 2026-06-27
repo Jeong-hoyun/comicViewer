@@ -5,6 +5,7 @@ import com.jhyun.comicviewer.data.DirectoryListing
 import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.LibraryRepository
+import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,4 +53,13 @@ class FakeLibraryRepository : LibraryRepository {
         page: Int,
         pageCount: Int,
     ) = Unit
+
+    val bookmarksFlow = MutableStateFlow<List<BookmarkEntity>>(emptyList())
+    override val bookmarks = bookmarksFlow
+
+    override suspend fun toggleBookmark(
+        treeUri: Uri,
+        entry: FolderEntry,
+        page: Int,
+    ): Boolean = true
 }

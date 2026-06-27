@@ -5,6 +5,7 @@ import com.jhyun.comicviewer.data.DirectoryListing
 import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.LibraryRepository
+import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,6 +58,36 @@ class FakeLibraryRepository : LibraryRepository {
     val savedProgress = mutableListOf<ReadingProgressEntity>()
 
     override suspend fun getProgress(comicUri: String): Int? = progressByUri[comicUri]
+
+    val bookmarksFlow = MutableStateFlow<List<BookmarkEntity>>(emptyList())
+    override val bookmarks = bookmarksFlow
+
+    override suspend fun toggleBookmark(
+        treeUri: Uri,
+        entry: FolderEntry,
+        page: Int,
+    ): Boolean {
+        val uri = entry.uri.toString()
+        val existing = bookmarksFlow.value.find { it.comicUri == uri && it.page == page }
+        return if (existing != null) {
+            bookmarksFlow.value = bookmarksFlow.value - existing
+            false
+        } else {
+            bookmarksFlow.value =
+                bookmarksFlow.value +
+                BookmarkEntity(
+                    id = (bookmarksFlow.value.size + 1).toLong(),
+                    comicUri = uri,
+                    treeUri = treeUri.toString(),
+                    docId = entry.documentId,
+                    name = entry.name,
+                    isArchive = entry.isArchive,
+                    page = page,
+                    createdAt = 0L,
+                )
+            true
+        }
+    }
 
     override suspend fun saveProgress(
         treeUri: Uri,

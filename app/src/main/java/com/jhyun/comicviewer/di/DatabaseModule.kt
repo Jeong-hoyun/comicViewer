@@ -3,6 +3,7 @@ package com.jhyun.comicviewer.di
 import android.content.Context
 import androidx.room.Room
 import com.jhyun.comicviewer.data.local.AppDatabase
+import com.jhyun.comicviewer.data.local.BookmarkDao
 import com.jhyun.comicviewer.data.local.ReadingProgressDao
 import com.jhyun.comicviewer.data.local.SourceFolderDao
 import dagger.Module
@@ -31,4 +32,7 @@ object DatabaseModule {
 
     @Provides
     fun provideReadingProgressDao(db: AppDatabase): ReadingProgressDao = db.readingProgressDao()
+
+    @Provides
+    fun provideBookmarkDao(db: AppDatabase): BookmarkDao = db.bookmarkDao()
 }

@@ -71,6 +71,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.jhyun.comicviewer.data.FolderEntry
+import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 
@@ -93,6 +94,8 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
     val preview by viewModel.preview.collectAsStateWithLifecycle()
     val reader by viewModel.reader.collectAsStateWithLifecycle()
     val recentlyRead by viewModel.recentlyRead.collectAsStateWithLifecycle()
+    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
+    val bookmarkedPages by viewModel.bookmarkedPages.collectAsStateWithLifecycle()
 
     var selectedTab by rememberSaveable { mutableIntStateOf(LibraryTab.Storage.ordinal) }
     var overflowOpen by remember { mutableStateOf(false) }
@@ -204,10 +207,9 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                         )
 
                     LibraryTab.Bookmark ->
-                        PlaceholderTab(
-                            icon = Icons.Default.Bookmark,
-                            title = "저장된 책갈피가 없어요.",
-                            body = "책갈피 기능은 곧 지원됩니다. (로드맵 2번)",
+                        BookmarkTab(
+                            items = bookmarks,
+                            onOpen = viewModel::openBookmark,
                         )
                 }
             }
@@ -227,6 +229,8 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                 state = state,
                 onClose = viewModel::closeReader,
                 onProgress = viewModel::onReaderPageChanged,
+                bookmarkedPages = bookmarkedPages,
+                onToggleBookmark = viewModel::toggleBookmark,
             )
         }
     }
@@ -524,6 +528,36 @@ private fun HistoryTab(
                 headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 supportingContent = { Text("${item.lastPage + 1} / ${item.pageCount} 페이지") },
                 leadingContent = { Icon(Icons.Default.History, contentDescription = null) },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpen(item) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        }
+    }
+}
+
+/** 책갈피 탭: 저장된 책갈피 목록 → 탭하면 해당 페이지로. */
+@Composable
+private fun BookmarkTab(
+    items: List<BookmarkEntity>,
+    onOpen: (BookmarkEntity) -> Unit,
+) {
+    if (items.isEmpty()) {
+        PlaceholderTab(
+            icon = Icons.Default.Bookmark,
+            title = "저장된 책갈피가 없어요.",
+            body = "리더 상단 책갈피 버튼으로 현재 페이지를 저장하세요.",
+        )
+        return
+    }
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(items, key = { it.id }) { item ->
+            ListItem(
+                headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                supportingContent = { Text("${item.page + 1} 페이지") },
+                leadingContent = { Icon(Icons.Default.Bookmark, contentDescription = null) },
                 modifier =
                     Modifier
                         .fillMaxWidth()

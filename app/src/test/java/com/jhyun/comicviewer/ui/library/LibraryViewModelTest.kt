@@ -7,6 +7,7 @@ import com.google.common.truth.Truth.assertThat
 import com.jhyun.comicviewer.data.DirectoryListing
 import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
+import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.util.FakeLibraryRepository
 import com.jhyun.comicviewer.util.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -181,5 +182,39 @@ class LibraryViewModelTest {
 
         assertThat(repo.savedProgress.last().lastPage).isEqualTo(5)
         assertThat(repo.savedProgress.last().pageCount).isEqualTo(10)
+    }
+
+    @Test
+    fun `책갈피 토글은 추가한 뒤 다시 제거한다`() {
+        repo.pages = List(5) { image("p$it") }
+        val vm = viewModel()
+        vm.openLibrary(uri("content://tree/root"), "lib")
+        vm.openComic(folder("SeriesA", docId = "sa", images = 5), fromStart = true)
+
+        vm.toggleBookmark(2)
+        assertThat(repo.bookmarksFlow.value.map { it.page }).containsExactly(2)
+
+        vm.toggleBookmark(2)
+        assertThat(repo.bookmarksFlow.value).isEmpty()
+    }
+
+    @Test
+    fun `책갈피로 열면 해당 페이지부터 연다`() {
+        repo.pages = List(10) { image("p$it") }
+        val vm = viewModel()
+
+        vm.openBookmark(
+            BookmarkEntity(
+                comicUri = "content://f/sa",
+                treeUri = "content://tree/root",
+                docId = "sa",
+                name = "SeriesA",
+                isArchive = false,
+                page = 6,
+                createdAt = 0L,
+            ),
+        )
+
+        assertThat(vm.reader.value!!.startPage).isEqualTo(6)
     }
 }

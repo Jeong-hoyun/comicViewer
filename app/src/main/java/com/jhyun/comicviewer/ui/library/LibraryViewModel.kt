@@ -7,6 +7,7 @@ import com.jhyun.comicviewer.data.DirectoryListing
 import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.LibraryRepository
+import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -72,6 +74,25 @@ class LibraryViewModel
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = emptyList(),
+            )
+
+        /** 전체 책갈피(책갈피 탭). */
+        val bookmarks: StateFlow<List<BookmarkEntity>> =
+            repository.bookmarks.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
+        /** 현재 열린 만화의 책갈피 페이지 집합(리더 책갈피 아이콘 표시용). */
+        private val openComicUriFlow = MutableStateFlow<String?>(null)
+        val bookmarkedPages: StateFlow<Set<Int>> =
+            combine(openComicUriFlow, repository.bookmarks) { uri, all ->
+                if (uri == null) emptySet() else all.filter { it.comicUri == uri }.map { it.page }.toSet()
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptySet(),
             )
 
         /** 미리보기 다이얼로그 대상 (null 이면 닫힘). */
@@ -167,45 +188,67 @@ class LibraryViewModel
             fromStart: Boolean,
         ) {
             val treeUri = root ?: return
-            launchOpen(treeUri, entry, fromStart)
+            launchOpen(treeUri, entry, if (fromStart) 0 else null)
         }
 
         /** 히스토리 항목에서 다시 열기(저장된 페이지부터). */
         fun openFromHistory(item: ReadingProgressEntity) {
             val treeUri = Uri.parse(item.treeUri)
             root = treeUri
-            val entry =
-                FolderEntry(
-                    uri = Uri.parse(item.comicUri),
-                    documentId = item.docId,
-                    name = item.name,
-                    cover = null,
-                    imageCount = item.pageCount,
-                    hasSubfolders = false,
-                    isArchive = item.isArchive,
-                )
-            launchOpen(treeUri, entry, fromStart = false)
+            launchOpen(treeUri, entryOf(item.comicUri, item.docId, item.name, item.isArchive, item.pageCount), null)
         }
 
+        /** 책갈피에서 해당 페이지로 열기. */
+        fun openBookmark(item: BookmarkEntity) {
+            val treeUri = Uri.parse(item.treeUri)
+            root = treeUri
+            launchOpen(treeUri, entryOf(item.comicUri, item.docId, item.name, item.isArchive, 0), item.page)
+        }
+
+        private fun entryOf(
+            comicUri: String,
+            docId: String,
+            name: String,
+            isArchive: Boolean,
+            pageCount: Int,
+        ) = FolderEntry(
+            uri = Uri.parse(comicUri),
+            documentId = docId,
+            name = name,
+            cover = null,
+            imageCount = pageCount,
+            hasSubfolders = false,
+            isArchive = isArchive,
+        )
+
+        /** explicitPage 가 null 이면 저장된 진행도부터, 아니면 그 페이지부터. */
         private fun launchOpen(
             treeUri: Uri,
             entry: FolderEntry,
-            fromStart: Boolean,
+            explicitPage: Int?,
         ) {
             viewModelScope.launch {
                 val pages = repository.listPages(treeUri, entry)
-                val resume = if (fromStart) 0 else (repository.getProgress(entry.uri.toString()) ?: 0)
+                val start = explicitPage ?: (repository.getProgress(entry.uri.toString()) ?: 0)
                 openComicEntry = entry
                 openComicTree = treeUri
                 openComicPageCount = pages.size
+                openComicUriFlow.value = entry.uri.toString()
                 _reader.value =
                     ReaderState(
                         title = entry.name,
                         pages = pages,
-                        startPage = resume.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
+                        startPage = start.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
                     )
                 _preview.value = null
             }
+        }
+
+        /** 현재 열린 만화의 page 책갈피를 토글. */
+        fun toggleBookmark(page: Int) {
+            val entry = openComicEntry ?: return
+            val treeUri = openComicTree ?: return
+            viewModelScope.launch { repository.toggleBookmark(treeUri, entry, page) }
         }
 
         /** 리더에서 현재 페이지가 바뀔 때 진행도 저장. */
@@ -221,6 +264,7 @@ class LibraryViewModel
             _reader.value = null
             openComicEntry = null
             openComicTree = null
+            openComicUriFlow.value = null
         }
 
         fun removeFolder(folder: SourceFolderEntity) {

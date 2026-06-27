@@ -38,6 +38,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
@@ -120,6 +122,8 @@ fun ReaderScreen(
     state: ReaderState,
     onClose: () -> Unit,
     onProgress: (Int) -> Unit = {},
+    bookmarkedPages: Set<Int> = emptySet(),
+    onToggleBookmark: (Int) -> Unit = {},
 ) {
     val pages = state.pages
     val scope = rememberCoroutineScope()
@@ -308,6 +312,11 @@ fun ReaderScreen(
                             "회전 잠금",
                         ) { rotationLocked = !rotationLocked }
                         ToolbarButton(Icons.Default.BrightnessMedium, "밝기") { brightnessPanel = true }
+                        val bookmarked = currentPageIndex in bookmarkedPages
+                        ToolbarButton(
+                            if (bookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            "책갈피",
+                        ) { onToggleBookmark(currentPageIndex) }
                     }
                 }
             }
