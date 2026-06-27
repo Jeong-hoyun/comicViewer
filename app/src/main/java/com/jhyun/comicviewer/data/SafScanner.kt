@@ -70,23 +70,15 @@ class SafScanner
                 DocumentsContract.Document.COLUMN_MIME_TYPE,
             )
 
-        /** treeUri 전체(재귀)의 이미지 목록. startDocId 를 주면 그 하위만. */
-        fun listImages(
+        /** docId(미지정 시 root) 폴더의 "직접" 이미지만 자연 정렬해 반환합니다(하위 폴더 미포함). */
+        fun listImagesDirect(
             treeUri: Uri,
-            startDocId: String = DocumentsContract.getTreeDocumentId(treeUri),
+            docId: String = DocumentsContract.getTreeDocumentId(treeUri),
         ): List<ImageDoc> {
             val results = mutableListOf<ImageDoc>()
-            val queue = ArrayDeque<String>()
-            queue.add(startDocId)
-
-            while (queue.isNotEmpty()) {
-                val parentDocId = queue.removeFirst()
-                queryChildren(treeUri, parentDocId) { docId, name, mime ->
-                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        queue.add(docId)
-                    } else if (isImage(name, mime)) {
-                        results.add(ImageDoc(buildDocUri(treeUri, docId), name))
-                    }
+            queryChildren(treeUri, docId) { childId, name, mime ->
+                if (mime != DocumentsContract.Document.MIME_TYPE_DIR && isImage(name, mime)) {
+                    results.add(ImageDoc(buildDocUri(treeUri, childId), name))
                 }
             }
             return results.sortedWith(compareBy(naturalComparator) { it.name })

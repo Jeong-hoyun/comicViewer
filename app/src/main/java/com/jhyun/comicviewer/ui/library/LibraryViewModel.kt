@@ -114,12 +114,12 @@ class LibraryViewModel
             }
         }
 
-        /** 하위 폴더 없이 이미지만 있으면 → 현재 폴더 자체를 만화 1권으로 표현. */
+        /** 현재 폴더에 직접 이미지가 있으면 → 그 폴더 자체를 만화 1권으로 표현(하위 폴더 유무 무관). */
         private fun selfComicOrNull(
             level: BrowseLevel,
             listing: DirectoryListing,
         ): FolderEntry? {
-            if (listing.subfolders.isNotEmpty() || listing.images.isEmpty()) return null
+            if (listing.images.isEmpty()) return null
             return FolderEntry(
                 uri = listing.folderUri,
                 documentId = listing.folderDocId,

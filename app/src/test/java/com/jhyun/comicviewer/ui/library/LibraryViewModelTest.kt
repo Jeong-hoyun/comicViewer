@@ -104,11 +104,24 @@ class LibraryViewModelTest {
     }
 
     @Test
-    fun `하위 폴더가 섞여 있으면 selfComic 은 null`() {
+    fun `이미지와 하위 폴더가 섞여 있어도 이미지가 있으면 selfComic 과 하위 폴더 모두 표시`() {
         repo.defaultListing = listing(subfolders = listOf(folder("A")), images = listOf(image("1")))
         val vm = viewModel()
 
         vm.openLibrary(uri("content://tree/root"), "Mixed")
+
+        val state = vm.directory.value as DirectoryUiState.Loaded
+        assertThat(state.selfComic).isNotNull()
+        assertThat(state.selfComic!!.imageCount).isEqualTo(1)
+        assertThat(state.subfolders).hasSize(1)
+    }
+
+    @Test
+    fun `이미지 없이 하위 폴더만 있으면 selfComic 은 null`() {
+        repo.defaultListing = listing(subfolders = listOf(folder("A")))
+        val vm = viewModel()
+
+        vm.openLibrary(uri("content://tree/root"), "Shelf")
 
         assertThat((vm.directory.value as DirectoryUiState.Loaded).selfComic).isNull()
     }

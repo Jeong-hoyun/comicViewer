@@ -94,7 +94,7 @@ class LibraryRepositoryImpl
                 if (entry.isArchive) {
                     scanner.listZipImages(entry.uri)
                 } else {
-                    scanner.listImages(treeUri, entry.documentId)
+                    scanner.listImagesDirect(treeUri, entry.documentId)
                 }
             }
     }
