@@ -27,7 +27,6 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
@@ -49,7 +48,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -65,10 +63,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -225,7 +221,7 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
         }
 
         reader?.let { state ->
-            ReaderOverlay(state = state, onClose = viewModel::closeReader)
+            ReaderScreen(state = state, onClose = viewModel::closeReader)
         }
     }
 }
@@ -485,48 +481,6 @@ private fun PreviewDialog(
             TextButton(onClick = onDismiss) { Text("닫기") }
         },
     )
-}
-
-/** "첫페이지보기"로 여는 간단한 세로 스크롤 뷰어 (정식 리더는 로드맵 1번). */
-@Composable
-private fun ReaderOverlay(
-    state: ReaderState,
-    onClose: () -> Unit,
-) {
-    BackHandler(onBack = onClose)
-    Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(state.pages, key = { it.uri.toString() }) { page ->
-                    AsyncImage(
-                        model = page.uri,
-                        contentDescription = page.name,
-                        contentScale = ContentScale.FillWidth,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xAA000000))
-                        .padding(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "닫기", tint = Color.White)
-                }
-                Text(
-                    "${state.title} · ${state.pages.size}페이지",
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
-        }
-    }
 }
 
 @Composable
