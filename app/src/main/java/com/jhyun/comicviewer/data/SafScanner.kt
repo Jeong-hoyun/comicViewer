@@ -35,6 +35,9 @@ data class FolderEntry(
 data class DirectoryListing(
     val subfolders: List<FolderEntry>,
     val images: List<ImageDoc>,
+    /** 나열 대상 폴더(=현재 폴더) 자체의 document Uri/ID. selfComic 판정에 사용. */
+    val folderUri: Uri,
+    val folderDocId: String,
 )
 
 /**
@@ -102,6 +105,8 @@ class SafScanner
             return DirectoryListing(
                 subfolders = subfolders,
                 images = images.sortedWith(compareBy(naturalComparator) { it.name }),
+                folderUri = buildDocUri(treeUri, parentDocId),
+                folderDocId = parentDocId,
             )
         }
 

@@ -1,7 +1,6 @@
 package com.jhyun.comicviewer.ui.library
 
 import android.net.Uri
-import android.provider.DocumentsContract
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jhyun.comicviewer.data.DirectoryListing
@@ -108,7 +107,7 @@ class LibraryViewModel
                 _directory.value =
                     DirectoryUiState.Loaded(
                         subfolders = listing.subfolders,
-                        selfComic = selfComicOrNull(treeUri, level, listing),
+                        selfComic = selfComicOrNull(level, listing),
                         title = level.title,
                         canGoUp = stack.size > 1,
                     )
@@ -117,15 +116,13 @@ class LibraryViewModel
 
         /** 하위 폴더 없이 이미지만 있으면 → 현재 폴더 자체를 만화 1권으로 표현. */
         private fun selfComicOrNull(
-            treeUri: Uri,
             level: BrowseLevel,
             listing: DirectoryListing,
         ): FolderEntry? {
             if (listing.subfolders.isNotEmpty() || listing.images.isEmpty()) return null
-            val docId = level.docId ?: DocumentsContract.getTreeDocumentId(treeUri)
             return FolderEntry(
-                uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId),
-                documentId = docId,
+                uri = listing.folderUri,
+                documentId = listing.folderDocId,
                 name = level.title,
                 coverUri = listing.images.first().uri,
                 imageCount = listing.images.size,

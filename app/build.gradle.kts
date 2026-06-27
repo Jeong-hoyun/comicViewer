@@ -40,6 +40,11 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true // Robolectric
+        }
+    }
 }
 
 dependencies {
@@ -76,4 +81,11 @@ dependencies {
     implementation(libs.telephoto.zoomable.image.coil)
 
     debugImplementation(libs.androidx.ui.tooling)
+
+    // 단위 테스트 (Phase 1 하네스)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.truth)
+    testImplementation(libs.robolectric)
 }
