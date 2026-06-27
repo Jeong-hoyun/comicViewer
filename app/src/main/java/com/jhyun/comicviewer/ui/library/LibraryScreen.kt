@@ -71,6 +71,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.jhyun.comicviewer.data.FolderEntry
+import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 
 /** 참고 앱(Perfect Viewer 계열)의 상단 탭 구조를 우리 SAF 데이터 모델에 맞게 재해석. */
@@ -91,6 +92,7 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
     val directory by viewModel.directory.collectAsStateWithLifecycle()
     val preview by viewModel.preview.collectAsStateWithLifecycle()
     val reader by viewModel.reader.collectAsStateWithLifecycle()
+    val recentlyRead by viewModel.recentlyRead.collectAsStateWithLifecycle()
 
     var selectedTab by rememberSaveable { mutableIntStateOf(LibraryTab.Storage.ordinal) }
     var overflowOpen by remember { mutableStateOf(false) }
@@ -196,10 +198,9 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                         )
 
                     LibraryTab.History ->
-                        PlaceholderTab(
-                            icon = Icons.Default.History,
-                            title = "히스토리가 비어 있어요.",
-                            body = "최근 읽은 기록은 곧 지원됩니다. (로드맵 2번)",
+                        HistoryTab(
+                            items = recentlyRead,
+                            onOpen = viewModel::openFromHistory,
                         )
 
                     LibraryTab.Bookmark ->
@@ -212,16 +213,21 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
             }
         }
 
-        preview?.let { entry ->
+        preview?.let { previewState ->
             PreviewDialog(
-                entry = entry,
+                state = previewState,
                 onDismiss = viewModel::dismissPreview,
-                onOpen = { viewModel.openComic(entry) },
+                onResume = { viewModel.openComic(previewState.entry, fromStart = false) },
+                onStart = { viewModel.openComic(previewState.entry, fromStart = true) },
             )
         }
 
         reader?.let { state ->
-            ReaderScreen(state = state, onClose = viewModel::closeReader)
+            ReaderScreen(
+                state = state,
+                onClose = viewModel::closeReader,
+                onProgress = viewModel::onReaderPageChanged,
+            )
         }
     }
 }
@@ -450,13 +456,16 @@ private fun CoverThumbnail(
     }
 }
 
-/** 참고 이미지의 미리보기 팝업: 표지 + 페이지 수 + 첫페이지보기. */
+/** 미리보기 팝업: 표지 + 페이지 수 + (이어보기) + 첫페이지보기. */
 @Composable
 private fun PreviewDialog(
-    entry: FolderEntry,
+    state: PreviewState,
     onDismiss: () -> Unit,
-    onOpen: () -> Unit,
+    onResume: () -> Unit,
+    onStart: () -> Unit,
 ) {
+    val entry = state.entry
+    val resumePage = state.resumePage
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
@@ -471,16 +480,58 @@ private fun PreviewDialog(
                             .aspectRatio(0.72f),
                 )
                 Spacer(Modifier.size(12.dp))
-                Text("총 ${entry.imageCount}페이지")
+                if (resumePage != null && resumePage > 0) {
+                    Text("${resumePage + 1} / ${entry.imageCount} 페이지까지 읽음")
+                } else {
+                    Text("총 ${entry.imageCount}페이지")
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = onOpen) { Text("첫페이지보기") }
+            if (resumePage != null && resumePage > 0) {
+                TextButton(onClick = onResume) { Text("이어보기") }
+            } else {
+                TextButton(onClick = onStart) { Text("첫페이지보기") }
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("닫기") }
+            if (resumePage != null && resumePage > 0) {
+                TextButton(onClick = onStart) { Text("첫페이지보기") }
+            } else {
+                TextButton(onClick = onDismiss) { Text("닫기") }
+            }
         },
     )
+}
+
+/** 히스토리 탭: 최근 읽은 만화 목록. */
+@Composable
+private fun HistoryTab(
+    items: List<ReadingProgressEntity>,
+    onOpen: (ReadingProgressEntity) -> Unit,
+) {
+    if (items.isEmpty()) {
+        PlaceholderTab(
+            icon = Icons.Default.History,
+            title = "히스토리가 비어 있어요.",
+            body = "만화를 읽으면 여기에 최근 기록이 쌓입니다.",
+        )
+        return
+    }
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(items, key = { it.comicUri }) { item ->
+            ListItem(
+                headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                supportingContent = { Text("${item.lastPage + 1} / ${item.pageCount} 페이지") },
+                leadingContent = { Icon(Icons.Default.History, contentDescription = null) },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpen(item) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        }
+    }
 }
 
 @Composable

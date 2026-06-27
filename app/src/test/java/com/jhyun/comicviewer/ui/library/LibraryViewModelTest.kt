@@ -133,7 +133,7 @@ class LibraryViewModelTest {
         vm.openLibrary(uri("content://tree/root"), "lib")
         vm.showPreview(folder("SeriesA", docId = "sa", images = 3))
 
-        vm.openComic(folder("SeriesA", docId = "sa", images = 3))
+        vm.openComic(folder("SeriesA", docId = "sa", images = 3), fromStart = true)
 
         assertThat(vm.preview.value).isNull()
         val reader = vm.reader.value
@@ -149,10 +149,37 @@ class LibraryViewModelTest {
             vm.preview.test {
                 assertThat(awaitItem()).isNull()
                 vm.showPreview(folder("X"))
-                assertThat(awaitItem()?.name).isEqualTo("X")
+                assertThat(awaitItem()?.entry?.name).isEqualTo("X")
                 vm.dismissPreview()
                 assertThat(awaitItem()).isNull()
                 cancelAndIgnoreRemainingEvents()
             }
         }
+
+    @Test
+    fun `이어보기는 저장된 페이지부터 열고 첫페이지보기는 0부터 연다`() {
+        repo.pages = List(10) { image("p$it") }
+        repo.progressByUri = mapOf("content://f/sa" to 4)
+        val vm = viewModel()
+        vm.openLibrary(uri("content://tree/root"), "lib")
+
+        vm.openComic(folder("SeriesA", docId = "sa", images = 10), fromStart = false)
+        assertThat(vm.reader.value!!.startPage).isEqualTo(4)
+
+        vm.openComic(folder("SeriesA", docId = "sa", images = 10), fromStart = true)
+        assertThat(vm.reader.value!!.startPage).isEqualTo(0)
+    }
+
+    @Test
+    fun `리더 페이지가 바뀌면 진행도를 저장한다`() {
+        repo.pages = List(10) { image("p$it") }
+        val vm = viewModel()
+        vm.openLibrary(uri("content://tree/root"), "lib")
+        vm.openComic(folder("SeriesA", docId = "sa", images = 10), fromStart = true)
+
+        vm.onReaderPageChanged(5)
+
+        assertThat(repo.savedProgress.last().lastPage).isEqualTo(5)
+        assertThat(repo.savedProgress.last().pageCount).isEqualTo(10)
+    }
 }

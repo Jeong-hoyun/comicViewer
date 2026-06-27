@@ -48,7 +48,7 @@ class LibraryScreenTest {
     )
 
     @Test
-    fun `스토리지 탭에 Recent 와 라이브러리 폴더가 표시된다`() {
+    fun `스토리지탭_Recent_라이브러리폴더_표시`() {
         repo.foldersFlow.value = listOf(SourceFolderEntity("content://tree/x", "MyLib", 1L))
 
         setScreen()
@@ -58,7 +58,7 @@ class LibraryScreenTest {
     }
 
     @Test
-    fun `히스토리 탭은 플레이스홀더를 보여준다`() {
+    fun `히스토리탭_플레이스홀더_표시`() {
         setScreen()
 
         composeRule.onNodeWithText("히스토리").performClick()
@@ -67,7 +67,7 @@ class LibraryScreenTest {
     }
 
     @Test
-    fun `폴더를 열면 만화 목록이 보이고 탭하면 미리보기 다이얼로그가 뜬다`() {
+    fun `폴더_열면_만화목록_탭하면_미리보기_다이얼로그`() {
         repo.foldersFlow.value = listOf(SourceFolderEntity("content://tree/x", "MyLib", 1L))
         repo.defaultListing =
             DirectoryListing(

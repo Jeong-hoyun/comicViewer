@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import com.jhyun.comicviewer.data.local.ReadingProgressDao
+import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderDao
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -36,6 +38,20 @@ interface LibraryRepository {
         treeUri: Uri,
         entry: FolderEntry,
     ): List<ImageDoc>
+
+    /** 최근 읽은 만화(이어보기/히스토리), 최신순. */
+    val recentlyRead: Flow<List<ReadingProgressEntity>>
+
+    /** 해당 만화의 마지막으로 읽은 페이지(없으면 null). */
+    suspend fun getProgress(comicUri: String): Int?
+
+    /** 읽기 진행도를 저장(upsert)합니다. */
+    suspend fun saveProgress(
+        treeUri: Uri,
+        entry: FolderEntry,
+        page: Int,
+        pageCount: Int,
+    )
 }
 
 @Singleton
@@ -43,10 +59,13 @@ class LibraryRepositoryImpl
     @Inject
     constructor(
         private val dao: SourceFolderDao,
+        private val progressDao: ReadingProgressDao,
         private val scanner: SafScanner,
         @ApplicationContext private val context: Context,
     ) : LibraryRepository {
         override val folders: Flow<List<SourceFolderEntity>> = dao.observeAll()
+
+        override val recentlyRead: Flow<List<ReadingProgressEntity>> = progressDao.observeAll()
 
         override suspend fun addFolder(treeUri: Uri): String {
             context.contentResolver.takePersistableUriPermission(
@@ -97,4 +116,26 @@ class LibraryRepositoryImpl
                     scanner.listImagesDirect(treeUri, entry.documentId)
                 }
             }
+
+        override suspend fun getProgress(comicUri: String): Int? = progressDao.get(comicUri)?.lastPage
+
+        override suspend fun saveProgress(
+            treeUri: Uri,
+            entry: FolderEntry,
+            page: Int,
+            pageCount: Int,
+        ) {
+            progressDao.upsert(
+                ReadingProgressEntity(
+                    comicUri = entry.uri.toString(),
+                    treeUri = treeUri.toString(),
+                    docId = entry.documentId,
+                    name = entry.name,
+                    isArchive = entry.isArchive,
+                    lastPage = page,
+                    pageCount = pageCount,
+                    updatedAt = System.currentTimeMillis(),
+                ),
+            )
+        }
     }

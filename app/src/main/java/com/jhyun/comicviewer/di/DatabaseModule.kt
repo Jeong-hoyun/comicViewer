@@ -3,6 +3,7 @@ package com.jhyun.comicviewer.di
 import android.content.Context
 import androidx.room.Room
 import com.jhyun.comicviewer.data.local.AppDatabase
+import com.jhyun.comicviewer.data.local.ReadingProgressDao
 import com.jhyun.comicviewer.data.local.SourceFolderDao
 import dagger.Module
 import dagger.Provides
@@ -21,8 +22,13 @@ object DatabaseModule {
     ): AppDatabase =
         Room
             .databaseBuilder(context, AppDatabase::class.java, "comicviewer.db")
+            // PoC 단계: 스키마 변경 시 마이그레이션 대신 재생성(데이터 초기화 허용).
+            .fallbackToDestructiveMigration()
             .build()
 
     @Provides
     fun provideSourceFolderDao(db: AppDatabase): SourceFolderDao = db.sourceFolderDao()
+
+    @Provides
+    fun provideReadingProgressDao(db: AppDatabase): ReadingProgressDao = db.readingProgressDao()
 }

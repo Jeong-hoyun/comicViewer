@@ -5,6 +5,7 @@ import com.jhyun.comicviewer.data.DirectoryListing
 import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.LibraryRepository
+import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -37,4 +38,18 @@ class FakeLibraryRepository : LibraryRepository {
         treeUri: Uri,
         entry: FolderEntry,
     ): List<ImageDoc> = pages
+
+    val recentlyReadFlow = MutableStateFlow<List<ReadingProgressEntity>>(emptyList())
+    override val recentlyRead = recentlyReadFlow
+
+    var progressByUri: Map<String, Int> = emptyMap()
+
+    override suspend fun getProgress(comicUri: String): Int? = progressByUri[comicUri]
+
+    override suspend fun saveProgress(
+        treeUri: Uri,
+        entry: FolderEntry,
+        page: Int,
+        pageCount: Int,
+    ) = Unit
 }

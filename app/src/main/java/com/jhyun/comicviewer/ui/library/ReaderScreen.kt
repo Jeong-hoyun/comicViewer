@@ -119,6 +119,7 @@ private const val SYSTEM_BRIGHTNESS = WindowManager.LayoutParams.BRIGHTNESS_OVER
 fun ReaderScreen(
     state: ReaderState,
     onClose: () -> Unit,
+    onProgress: (Int) -> Unit = {},
 ) {
     val pages = state.pages
     val scope = rememberCoroutineScope()
@@ -146,9 +147,11 @@ fun ReaderScreen(
             if (useDouble) pages.indices.chunked(2) else pages.indices.map { listOf(it) }
         }
 
-    val pagerState = rememberPagerState(pageCount = { units.size })
-    val verticalState = rememberLazyListState()
-    val smoothState = rememberLazyListState()
+    // 이어보기: startPage 가 포함된 보기 단위에서 시작.
+    val initialUnit = remember { units.indexOfFirst { it.contains(state.startPage) }.coerceAtLeast(0) }
+    val pagerState = rememberPagerState(initialPage = initialUnit, pageCount = { units.size })
+    val verticalState = rememberLazyListState(initialFirstVisibleItemIndex = initialUnit)
+    val smoothState = rememberLazyListState(initialFirstVisibleItemIndex = initialUnit)
 
     val currentUnit =
         when {
@@ -157,6 +160,9 @@ fun ReaderScreen(
             else -> pagerState.currentPage
         }.coerceIn(0, (units.size - 1).coerceAtLeast(0))
     val currentPageIndex = units.getOrNull(currentUnit)?.firstOrNull() ?: 0
+
+    // 현재 페이지가 바뀌면 진행도 보고.
+    LaunchedEffect(currentPageIndex) { onProgress(currentPageIndex) }
 
     // --- 윈도우 효과: 리더를 벗어나면 원복 ---
     LaunchedEffect(autoBrightness, manualBrightness) {

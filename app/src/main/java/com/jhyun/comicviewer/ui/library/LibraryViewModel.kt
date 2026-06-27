@@ -7,6 +7,7 @@ import com.jhyun.comicviewer.data.DirectoryListing
 import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.LibraryRepository
+import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,10 +32,17 @@ sealed interface DirectoryUiState {
     ) : DirectoryUiState
 }
 
-/** "첫페이지보기"로 연 간단 뷰어 상태. */
+/** 리더 상태. startPage 부터 열립니다(이어보기). */
 data class ReaderState(
     val title: String,
     val pages: List<ImageDoc>,
+    val startPage: Int = 0,
+)
+
+/** 미리보기 다이얼로그 상태. resumePage 가 있으면 "이어보기" 노출. */
+data class PreviewState(
+    val entry: FolderEntry,
+    val resumePage: Int?,
 )
 
 private data class BrowseLevel(
@@ -58,9 +66,17 @@ class LibraryViewModel
         private val _directory = MutableStateFlow<DirectoryUiState>(DirectoryUiState.Empty)
         val directory: StateFlow<DirectoryUiState> = _directory.asStateFlow()
 
+        /** 최근 읽은 만화(히스토리 탭). */
+        val recentlyRead: StateFlow<List<ReadingProgressEntity>> =
+            repository.recentlyRead.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
+
         /** 미리보기 다이얼로그 대상 (null 이면 닫힘). */
-        private val _preview = MutableStateFlow<FolderEntry?>(null)
-        val preview: StateFlow<FolderEntry?> = _preview.asStateFlow()
+        private val _preview = MutableStateFlow<PreviewState?>(null)
+        val preview: StateFlow<PreviewState?> = _preview.asStateFlow()
 
         /** 열린 뷰어 (null 이면 닫힘). */
         private val _reader = MutableStateFlow<ReaderState?>(null)
@@ -68,6 +84,11 @@ class LibraryViewModel
 
         private var root: Uri? = null
         private val stack = ArrayDeque<BrowseLevel>()
+
+        // 현재 열린 만화(진행도 저장용).
+        private var openComicEntry: FolderEntry? = null
+        private var openComicTree: Uri? = null
+        private var openComicPageCount: Int = 0
 
         fun addFolder(uri: Uri) {
             viewModelScope.launch {
@@ -131,24 +152,75 @@ class LibraryViewModel
         }
 
         fun showPreview(entry: FolderEntry) {
-            _preview.value = entry
+            viewModelScope.launch {
+                _preview.value = PreviewState(entry, repository.getProgress(entry.uri.toString()))
+            }
         }
 
         fun dismissPreview() {
             _preview.value = null
         }
 
-        fun openComic(entry: FolderEntry) {
+        /** 미리보기에서 만화 열기. fromStart=false 면 저장된 페이지부터(이어보기). */
+        fun openComic(
+            entry: FolderEntry,
+            fromStart: Boolean,
+        ) {
             val treeUri = root ?: return
+            launchOpen(treeUri, entry, fromStart)
+        }
+
+        /** 히스토리 항목에서 다시 열기(저장된 페이지부터). */
+        fun openFromHistory(item: ReadingProgressEntity) {
+            val treeUri = Uri.parse(item.treeUri)
+            root = treeUri
+            val entry =
+                FolderEntry(
+                    uri = Uri.parse(item.comicUri),
+                    documentId = item.docId,
+                    name = item.name,
+                    cover = null,
+                    imageCount = item.pageCount,
+                    hasSubfolders = false,
+                    isArchive = item.isArchive,
+                )
+            launchOpen(treeUri, entry, fromStart = false)
+        }
+
+        private fun launchOpen(
+            treeUri: Uri,
+            entry: FolderEntry,
+            fromStart: Boolean,
+        ) {
             viewModelScope.launch {
                 val pages = repository.listPages(treeUri, entry)
-                _reader.value = ReaderState(entry.name, pages)
+                val resume = if (fromStart) 0 else (repository.getProgress(entry.uri.toString()) ?: 0)
+                openComicEntry = entry
+                openComicTree = treeUri
+                openComicPageCount = pages.size
+                _reader.value =
+                    ReaderState(
+                        title = entry.name,
+                        pages = pages,
+                        startPage = resume.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
+                    )
                 _preview.value = null
+            }
+        }
+
+        /** 리더에서 현재 페이지가 바뀔 때 진행도 저장. */
+        fun onReaderPageChanged(page: Int) {
+            val entry = openComicEntry ?: return
+            val treeUri = openComicTree ?: return
+            viewModelScope.launch {
+                repository.saveProgress(treeUri, entry, page, openComicPageCount)
             }
         }
 
         fun closeReader() {
             _reader.value = null
+            openComicEntry = null
+            openComicTree = null
         }
 
         fun removeFolder(folder: SourceFolderEntity) {
