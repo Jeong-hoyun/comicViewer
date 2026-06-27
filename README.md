@@ -17,8 +17,27 @@ Storage Access Framework 로 읽어 쾌적하게 보는 것이 목표.
 ```bash
 ./gradlew assembleDebug          # 디버그 APK 빌드
 ./gradlew installDebug           # 연결된 기기에 설치
+./gradlew bundleRelease          # 서명된 릴리스 AAB (Play 업로드용)
 ```
 Android Studio 에서 이 폴더를 열어도 됩니다.
+
+## 릴리스 서명
+릴리스 빌드는 `keystore.properties`(git 제외)의 정보로 서명합니다. **클론 후 본인 키스토어로 한 번 설정**하세요:
+```bash
+# 1) 업로드 키스토어 생성 (한 번만)
+keytool -genkeypair -v -keystore app/upload-keystore.jks \
+  -alias upload -keyalg RSA -keysize 2048 -validity 10000
+# 2) 프로젝트 루트에 keystore.properties 작성 (git 제외됨)
+cat > keystore.properties <<'PROP'
+storeFile=upload-keystore.jks
+storePassword=<스토어 비밀번호>
+keyAlias=upload
+keyPassword=<키 비밀번호>
+PROP
+```
+- `keystore.properties` / `*.jks` 는 **절대 커밋 금지**(`.gitignore` 처리됨).
+- 파일이 없으면 릴리스 빌드는 **디버그 서명으로 폴백**(설치 테스트용, Play 업로드 불가).
+- Play **App Signing** 사용 권장: 이 키는 "업로드 키"로만 쓰고 앱 서명 키는 Google 이 관리.
 
 ## Git 훅 (ktlint)
 코드 스타일을 자동 강제하기 위해 git 훅을 사용합니다. **클론 후 한 번만** 설치하세요:
@@ -32,9 +51,10 @@ Android Studio 에서 이 폴더를 열어도 됩니다.
 - 규칙은 `.editorconfig` 에서 조정 (Compose 친화 설정 포함).
 
 ## 환경 메모
-- compileSdk / targetSdk = 34 (현재 설치된 SDK 기준). Play 출시 전 35 로 상향.
+- compileSdk / targetSdk = 35 (Play 신규 앱/업데이트 요건)
 - minSdk = 26
 - applicationId = `com.jhyun.comicviewer` (출시 전 본인 고유값으로 변경)
+- 릴리스: R8 minify + 리소스 축소 활성화 (proguard-rules.pro)
 
 ## 다음 단계 (로드맵)
 1. **리더 화면**: HorizontalPager 페이지 모드(LTR/RTL) + 세로 연속(웹툰) 모드 + 줌
