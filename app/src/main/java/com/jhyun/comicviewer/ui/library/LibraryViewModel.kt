@@ -7,6 +7,8 @@ import com.jhyun.comicviewer.data.DirectoryListing
 import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.LibraryRepository
+import com.jhyun.comicviewer.data.SettingsStore
+import com.jhyun.comicviewer.data.SortOrder
 import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -57,7 +60,38 @@ class LibraryViewModel
     @Inject
     constructor(
         private val repository: LibraryRepository,
+        private val settings: SettingsStore,
     ) : ViewModel() {
+        /** 정렬 기준(영속). */
+        val sortOrder: StateFlow<SortOrder> =
+            settings.sortOrder.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SortOrder.NameAsc)
+
+        /** 리더 기본 읽기 방향(영속). */
+        val readerDirection: StateFlow<ReadingDirection> =
+            settings.readerDirection
+                .map {
+                    it?.let { n -> runCatching { ReadingDirection.valueOf(n) }.getOrNull() }
+                        ?: ReadingDirection.Right
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReadingDirection.Right)
+
+        /** 리더 기본 페이지 레이아웃(영속). */
+        val readerLayout: StateFlow<PageLayout> =
+            settings.readerLayout
+                .map { it?.let { n -> runCatching { PageLayout.valueOf(n) }.getOrNull() } ?: PageLayout.Single }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PageLayout.Single)
+
+        fun setSortOrder(value: SortOrder) {
+            viewModelScope.launch { settings.setSortOrder(value) }
+        }
+
+        fun setReaderDirection(value: ReadingDirection) {
+            viewModelScope.launch { settings.setReaderDirection(value.name) }
+        }
+
+        fun setReaderLayout(value: PageLayout) {
+            viewModelScope.launch { settings.setReaderLayout(value.name) }
+        }
+
         val folders: StateFlow<List<SourceFolderEntity>> =
             repository.folders.stateIn(
                 scope = viewModelScope,

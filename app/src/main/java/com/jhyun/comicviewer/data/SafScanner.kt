@@ -36,6 +36,8 @@ data class FolderEntry(
     val hasSubfolders: Boolean,
     /** zip/cbz 아카이브이면 true. */
     val isArchive: Boolean = false,
+    /** 마지막 수정 시각(날짜 정렬용). */
+    val lastModified: Long = 0L,
 ) {
     /** 이미지로 바로 열 수 있는 만화(이미지만 있는 폴더 또는 아카이브). */
     val isComic: Boolean get() = imageCount > 0 && !hasSubfolders
@@ -68,6 +70,7 @@ class SafScanner
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                 DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED,
             )
 
         /** docId(미지정 시 root) 폴더의 "직접" 이미지만 자연 정렬해 반환합니다(하위 폴더 미포함). */
@@ -76,7 +79,7 @@ class SafScanner
             docId: String = DocumentsContract.getTreeDocumentId(treeUri),
         ): List<ImageDoc> {
             val results = mutableListOf<ImageDoc>()
-            queryChildren(treeUri, docId) { childId, name, mime ->
+            queryChildren(treeUri, docId) { childId, name, mime, _ ->
                 if (mime != DocumentsContract.Document.MIME_TYPE_DIR && isImage(name, mime)) {
                     results.add(ImageDoc(buildDocUri(treeUri, childId), name))
                 }
@@ -89,20 +92,23 @@ class SafScanner
             treeUri: Uri,
             parentDocId: String = DocumentsContract.getTreeDocumentId(treeUri),
         ): DirectoryListing {
-            val subfolderIds = mutableListOf<Pair<String, String>>() // docId to name
-            val archiveIds = mutableListOf<Pair<String, String>>() // docId to name
+            val subfolderRows = mutableListOf<ChildRow>()
+            val archiveRows = mutableListOf<ChildRow>()
             val images = mutableListOf<ImageDoc>()
 
-            queryChildren(treeUri, parentDocId) { docId, name, mime ->
+            queryChildren(treeUri, parentDocId) { docId, name, mime, lastModified ->
                 when {
-                    mime == DocumentsContract.Document.MIME_TYPE_DIR -> subfolderIds.add(docId to name)
-                    isArchive(name) -> archiveIds.add(docId to name)
+                    mime == DocumentsContract.Document.MIME_TYPE_DIR ->
+                        subfolderRows.add(
+                            ChildRow(docId, name, lastModified),
+                        )
+                    isArchive(name) -> archiveRows.add(ChildRow(docId, name, lastModified))
                     isImage(name, mime) -> images.add(ImageDoc(buildDocUri(treeUri, docId), name))
                 }
             }
 
-            val folders = subfolderIds.map { (docId, name) -> inspectFolder(treeUri, docId, name) }
-            val archives = archiveIds.map { (docId, name) -> inspectArchive(treeUri, docId, name) }
+            val folders = subfolderRows.map { inspectFolder(treeUri, it) }
+            val archives = archiveRows.map { inspectArchive(treeUri, it) }
 
             return DirectoryListing(
                 subfolders = (folders + archives).sortedWith(compareBy(naturalComparator) { it.name }),
@@ -123,16 +129,22 @@ class SafScanner
                 }
             }
 
+        /** 디렉토리 자식 행의 최소 정보. */
+        private data class ChildRow(
+            val docId: String,
+            val name: String,
+            val lastModified: Long,
+        )
+
         /** 폴더 1개를 얕게 살펴 표지/이미지 수/하위폴더 유무를 계산합니다. */
         private fun inspectFolder(
             treeUri: Uri,
-            docId: String,
-            name: String,
+            row: ChildRow,
         ): FolderEntry {
             val imageNames = mutableListOf<Pair<String, String>>() // imgDocId to name
             var hasSubfolders = false
 
-            queryChildren(treeUri, docId) { childId, childName, mime ->
+            queryChildren(treeUri, row.docId) { childId, childName, mime, _ ->
                 if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
                     hasSubfolders = true
                 } else if (isImage(childName, mime)) {
@@ -147,31 +159,32 @@ class SafScanner
                     ?.first
 
             return FolderEntry(
-                uri = buildDocUri(treeUri, docId),
-                documentId = docId,
-                name = name,
+                uri = buildDocUri(treeUri, row.docId),
+                documentId = row.docId,
+                name = row.name,
                 cover = coverId?.let { buildDocUri(treeUri, it) },
                 imageCount = imageNames.size,
                 hasSubfolders = hasSubfolders,
+                lastModified = row.lastModified,
             )
         }
 
         /** zip/cbz 1개를 열어 표지/페이지 수를 계산합니다. 실패 시 빈 항목. */
         private fun inspectArchive(
             treeUri: Uri,
-            docId: String,
-            name: String,
+            row: ChildRow,
         ): FolderEntry {
-            val zipUri = buildDocUri(treeUri, docId)
+            val zipUri = buildDocUri(treeUri, row.docId)
             val names = runCatching { readZip(zipUri) { imageEntryNames(it) } }.getOrDefault(emptyList())
             return FolderEntry(
                 uri = zipUri,
-                documentId = docId,
-                name = name,
+                documentId = row.docId,
+                name = row.name,
                 cover = names.firstOrNull()?.let { ZipEntryRef(zipUri, it) },
                 imageCount = names.size,
                 hasSubfolders = false,
                 isArchive = true,
+                lastModified = row.lastModified,
             )
         }
 
@@ -206,16 +219,17 @@ class SafScanner
         private inline fun queryChildren(
             treeUri: Uri,
             parentDocId: String,
-            onRow: (docId: String, name: String, mime: String?) -> Unit,
+            onRow: (docId: String, name: String, mime: String?, lastModified: Long) -> Unit,
         ) {
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId)
             context.contentResolver.query(childrenUri, projection, null, null, null)?.use { c ->
                 val idIdx = c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
                 val nameIdx = c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
                 val mimeIdx = c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                val modIdx = c.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
                 while (c.moveToNext()) {
                     val name = c.getString(nameIdx) ?: continue
-                    onRow(c.getString(idIdx), name, c.getString(mimeIdx))
+                    onRow(c.getString(idIdx), name, c.getString(mimeIdx), c.getLong(modIdx))
                 }
             }
         }

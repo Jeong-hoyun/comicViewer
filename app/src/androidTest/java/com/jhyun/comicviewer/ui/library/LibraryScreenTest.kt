@@ -14,6 +14,7 @@ import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
 import com.jhyun.comicviewer.ui.theme.ComicViewerTheme
 import com.jhyun.comicviewer.util.FakeLibraryRepository
+import com.jhyun.comicviewer.util.FakeSettingsStore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,11 +25,12 @@ class LibraryScreenTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private val repo = FakeLibraryRepository()
+    private val settings = FakeSettingsStore()
 
     private fun setScreen() {
         composeRule.setContent {
             ComicViewerTheme(darkTheme = true) {
-                val viewModel = remember { LibraryViewModel(repo) }
+                val viewModel = remember { LibraryViewModel(repo, settings) }
                 LibraryScreen(viewModel = viewModel)
             }
         }

@@ -70,7 +70,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.jhyun.comicviewer.core.NaturalOrderComparator
 import com.jhyun.comicviewer.data.FolderEntry
+import com.jhyun.comicviewer.data.SortOrder
 import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
@@ -96,9 +98,13 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
     val recentlyRead by viewModel.recentlyRead.collectAsStateWithLifecycle()
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
     val bookmarkedPages by viewModel.bookmarkedPages.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    val readerDirection by viewModel.readerDirection.collectAsStateWithLifecycle()
+    val readerLayout by viewModel.readerLayout.collectAsStateWithLifecycle()
 
     var selectedTab by rememberSaveable { mutableIntStateOf(LibraryTab.Storage.ordinal) }
     var overflowOpen by remember { mutableStateOf(false) }
+    var sortOpen by remember { mutableStateOf(false) }
 
     val pickFolder =
         rememberLauncherForActivityResult(
@@ -129,8 +135,21 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                         IconButton(onClick = { pickFolder.launch(null) }) {
                             Icon(Icons.Default.Add, contentDescription = "폴더 추가")
                         }
-                        IconButton(onClick = { /* TODO: 정렬 옵션 */ }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "정렬")
+                        Box {
+                            IconButton(onClick = { sortOpen = true }) {
+                                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "정렬")
+                            }
+                            DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                                SortOrder.entries.forEach { order ->
+                                    DropdownMenuItem(
+                                        text = { Text(order.label + if (order == sortOrder) "  ✓" else "") },
+                                        onClick = {
+                                            viewModel.setSortOrder(order)
+                                            sortOpen = false
+                                        },
+                                    )
+                                }
+                            }
                         }
                         IconButton(onClick = { overflowOpen = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "더보기")
@@ -195,6 +214,7 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                     LibraryTab.Directory ->
                         DirectoryTab(
                             state = directory,
+                            sortOrder = sortOrder,
                             onBrowseInto = viewModel::browseInto,
                             onPreview = viewModel::showPreview,
                             onUp = viewModel::browseUp,
@@ -231,6 +251,10 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                 onProgress = viewModel::onReaderPageChanged,
                 bookmarkedPages = bookmarkedPages,
                 onToggleBookmark = viewModel::toggleBookmark,
+                initialDirection = readerDirection,
+                initialLayout = readerLayout,
+                onDirectionChange = viewModel::setReaderDirection,
+                onLayoutChange = viewModel::setReaderLayout,
             )
         }
     }
@@ -296,6 +320,7 @@ private fun StorageTab(
 @Composable
 private fun DirectoryTab(
     state: DirectoryUiState,
+    sortOrder: SortOrder,
     onBrowseInto: (FolderEntry) -> Unit,
     onPreview: (FolderEntry) -> Unit,
     onUp: () -> Unit,
@@ -320,6 +345,21 @@ private fun DirectoryTab(
 
         is DirectoryUiState.Loaded -> {
             if (state.canGoUp) BackHandler(onBack = onUp)
+
+            val entries =
+                remember(state.subfolders, sortOrder) {
+                    val natural = NaturalOrderComparator()
+                    val byName = compareBy(natural) { e: FolderEntry -> e.name }
+                    val byDate = compareBy { e: FolderEntry -> e.lastModified }
+                    val comparator =
+                        when (sortOrder) {
+                            SortOrder.NameAsc -> byName
+                            SortOrder.NameDesc -> byName.reversed()
+                            SortOrder.DateAsc -> byDate
+                            SortOrder.DateDesc -> byDate.reversed()
+                        }
+                    state.subfolders.sortedWith(comparator)
+                }
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 item {
@@ -364,7 +404,7 @@ private fun DirectoryTab(
                     }
                 }
 
-                items(state.subfolders, key = { it.documentId }) { entry ->
+                items(entries, key = { it.documentId }) { entry ->
                     if (entry.isComic) {
                         ComicRow(entry, onClick = { onPreview(entry) })
                     } else {

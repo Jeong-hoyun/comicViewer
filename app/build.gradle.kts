@@ -76,6 +76,9 @@ dependencies {
     // SAF / 파일 접근
     implementation(libs.androidx.documentfile)
 
+    // 설정 저장
+    implementation(libs.androidx.datastore.preferences)
+
     // 이미지 로딩 + 줌
     implementation(libs.coil.compose)
     implementation(libs.telephoto.zoomable.image.coil)

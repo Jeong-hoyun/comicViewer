@@ -124,6 +124,10 @@ fun ReaderScreen(
     onProgress: (Int) -> Unit = {},
     bookmarkedPages: Set<Int> = emptySet(),
     onToggleBookmark: (Int) -> Unit = {},
+    initialDirection: ReadingDirection = ReadingDirection.Right,
+    initialLayout: PageLayout = PageLayout.Single,
+    onDirectionChange: (ReadingDirection) -> Unit = {},
+    onLayoutChange: (PageLayout) -> Unit = {},
 ) {
     val pages = state.pages
     val scope = rememberCoroutineScope()
@@ -131,8 +135,8 @@ fun ReaderScreen(
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var overlayVisible by remember { mutableStateOf(true) }
-    var direction by rememberSaveable { mutableStateOf(ReadingDirection.Right) }
-    var layout by rememberSaveable { mutableStateOf(PageLayout.Single) }
+    var direction by rememberSaveable { mutableStateOf(initialDirection) }
+    var layout by rememberSaveable { mutableStateOf(initialLayout) }
     var rotationLocked by rememberSaveable { mutableStateOf(false) }
     var keepScreenOn by rememberSaveable { mutableStateOf(false) }
     var autoBrightness by rememberSaveable { mutableStateOf(true) }
@@ -362,6 +366,7 @@ fun ReaderScreen(
             current = direction,
             onSelect = {
                 direction = it
+                onDirectionChange(it)
                 dirPopup = false
             },
             onDismiss = { dirPopup = false },
@@ -372,6 +377,7 @@ fun ReaderScreen(
             current = layout,
             onSelect = {
                 layout = it
+                onLayoutChange(it)
                 layoutPopup = false
             },
             onDismiss = { layoutPopup = false },

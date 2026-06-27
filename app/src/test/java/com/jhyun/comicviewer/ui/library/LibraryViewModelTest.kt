@@ -9,6 +9,7 @@ import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.local.BookmarkEntity
 import com.jhyun.comicviewer.util.FakeLibraryRepository
+import com.jhyun.comicviewer.util.FakeSettingsStore
 import com.jhyun.comicviewer.util.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -26,8 +27,9 @@ class LibraryViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val repo = FakeLibraryRepository()
+    private val settings = FakeSettingsStore()
 
-    private fun viewModel() = LibraryViewModel(repo)
+    private fun viewModel() = LibraryViewModel(repo, settings)
 
     private fun uri(value: String) = Uri.parse(value)
 
