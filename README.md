@@ -20,6 +20,17 @@ Storage Access Framework 로 읽어 쾌적하게 보는 것이 목표.
 ```
 Android Studio 에서 이 폴더를 열어도 됩니다.
 
+## Git 훅 (ktlint)
+코드 스타일을 자동 강제하기 위해 git 훅을 사용합니다. **클론 후 한 번만** 설치하세요:
+```bash
+./gradlew installGitHooks
+```
+- **pre-commit**: 스테이징된 Kotlin 파일에 `ktlintFormat` 자동 적용 후 재-stage
+- **pre-push**: `ktlintCheck` + 단위 테스트. 실패 시 푸시 차단
+- 수동: `./gradlew ktlintFormat` (수정) / `./gradlew ktlintCheck` (검사)
+- 긴급 우회: `git commit/push --no-verify`
+- 규칙은 `.editorconfig` 에서 조정 (Compose 친화 설정 포함).
+
 ## 환경 메모
 - compileSdk / targetSdk = 34 (현재 설치된 SDK 기준). Play 출시 전 35 로 상향.
 - minSdk = 26

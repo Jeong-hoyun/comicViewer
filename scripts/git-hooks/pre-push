@@ -1,0 +1,17 @@
+#!/bin/sh
+# 푸시 전 ktlint 스타일 검사 + 단위 테스트를 실행합니다.
+# 설치:  ./gradlew installGitHooks
+# 우회(긴급 시):  git push --no-verify
+
+echo "[pre-push] ktlintCheck + 단위 테스트 실행 중…"
+
+if ! ./gradlew --quiet ktlintCheck testDebugUnitTest; then
+    echo
+    echo "[pre-push] 검사 실패 → 푸시를 중단합니다."
+    echo "  • 포맷 자동 수정:  ./gradlew ktlintFormat"
+    echo "  • 긴급 우회:        git push --no-verify"
+    exit 1
+fi
+
+echo "[pre-push] 통과 ✓"
+exit 0

@@ -6,7 +6,10 @@ package com.jhyun.comicviewer.core
  * 자연 정렬:        1, 2, 3, 10 ...
  */
 class NaturalOrderComparator : Comparator<String> {
-    override fun compare(a: String, b: String): Int {
+    override fun compare(
+        a: String,
+        b: String,
+    ): Int {
         var ia = 0
         var ib = 0
         while (ia < a.length && ib < b.length) {

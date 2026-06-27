@@ -1,0 +1,16 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+max_line_length = 120
+# @Composable 함수는 PascalCase 가 관례이므로 function-naming 검사에서 제외.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+# Compose Color/스타일 등 PascalCase 최상위 val 을 허용.
+ktlint_standard_property-naming = disabled
