@@ -83,8 +83,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.telephoto.zoomable.image.coil)
 
-    // 압축 만화(zip/cbz) 랜덤 액세스
+    // 압축 만화(zip/cbz) 랜덤 액세스 + cbr(rar)
     implementation(libs.commons.compress)
+    implementation(libs.junrar)
 
     debugImplementation(libs.androidx.ui.tooling)
 

@@ -1,8 +1,10 @@
 package com.jhyun.comicviewer.data
 
 import android.content.Context
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.provider.DocumentsContract
+import com.github.junrar.Archive
 import com.jhyun.comicviewer.core.NaturalOrderComparator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
@@ -14,6 +16,18 @@ import javax.inject.Inject
 data class ZipEntryRef(
     val zipUri: Uri,
     val entryName: String,
+)
+
+/** cbr/rar 내부의 한 이미지 엔트리. */
+data class RarEntryRef(
+    val rarUri: Uri,
+    val entryName: String,
+)
+
+/** PDF 의 한 페이지(0-based). */
+data class PdfPageRef(
+    val pdfUri: Uri,
+    val pageIndex: Int,
 )
 
 /** 리더가 표시할 한 페이지. model 은 Coil 로 로드 가능한 값(Uri=파일, ZipEntryRef=zip 내부). */
@@ -62,7 +76,7 @@ class SafScanner
         @ApplicationContext private val context: Context,
     ) {
         private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "avif")
-        private val archiveExtensions = setOf("zip", "cbz")
+        private val archiveExtensions = setOf("zip", "cbz", "cbr", "rar", "pdf")
         private val naturalComparator = NaturalOrderComparator()
 
         private val projection =
@@ -118,16 +132,35 @@ class SafScanner
             )
         }
 
-        /** zip/cbz 한 권의 이미지 페이지를 자연 정렬해 반환합니다. */
-        fun listZipImages(zipUri: Uri): List<ImageDoc> =
+        /** 아카이브 한 권(zip/cbz/cbr/rar/pdf)의 페이지를 확장자에 따라 반환합니다. */
+        fun listArchiveImages(
+            uri: Uri,
+            name: String,
+        ): List<ImageDoc> =
+            when (ext(name)) {
+                "pdf" -> listPdfPages(uri)
+                "cbr", "rar" -> listRarImages(uri)
+                else -> listZipImages(uri)
+            }
+
+        private fun listZipImages(zipUri: Uri): List<ImageDoc> =
             readZip(zipUri) { zip ->
                 imageEntryNames(zip).map { entryName ->
-                    ImageDoc(
-                        model = ZipEntryRef(zipUri, entryName),
-                        name = entryName.substringAfterLast('/'),
-                    )
+                    ImageDoc(ZipEntryRef(zipUri, entryName), entryName.substringAfterLast('/'))
                 }
             }
+
+        private fun listRarImages(rarUri: Uri): List<ImageDoc> =
+            readRar(rarUri) { archive ->
+                rarImageEntryNames(archive).map { entryName ->
+                    ImageDoc(RarEntryRef(rarUri, entryName), entryName.substringAfterLast('/'))
+                }
+            }
+
+        private fun listPdfPages(pdfUri: Uri): List<ImageDoc> {
+            val count = readPdf(pdfUri) { it.pageCount }
+            return (0 until count).map { i -> ImageDoc(PdfPageRef(pdfUri, i), "${i + 1}") }
+        }
 
         /** 디렉토리 자식 행의 최소 정보. */
         private data class ChildRow(
@@ -169,19 +202,35 @@ class SafScanner
             )
         }
 
-        /** zip/cbz 1개를 열어 표지/페이지 수를 계산합니다. 실패 시 빈 항목. */
+        /** 아카이브 1개를 열어 표지/페이지 수를 계산합니다(확장자별). 실패 시 빈 항목. */
         private fun inspectArchive(
             treeUri: Uri,
             row: ChildRow,
         ): FolderEntry {
-            val zipUri = buildDocUri(treeUri, row.docId)
-            val names = runCatching { readZip(zipUri) { imageEntryNames(it) } }.getOrDefault(emptyList())
+            val uri = buildDocUri(treeUri, row.docId)
+            val (cover, count) =
+                runCatching {
+                    when (ext(row.name)) {
+                        "pdf" -> {
+                            val n = readPdf(uri) { it.pageCount }
+                            (if (n > 0) PdfPageRef(uri, 0) else null) as Any? to n
+                        }
+                        "cbr", "rar" -> {
+                            val names = readRar(uri) { rarImageEntryNames(it) }
+                            names.firstOrNull()?.let { RarEntryRef(uri, it) } as Any? to names.size
+                        }
+                        else -> {
+                            val names = readZip(uri) { imageEntryNames(it) }
+                            names.firstOrNull()?.let { ZipEntryRef(uri, it) } as Any? to names.size
+                        }
+                    }
+                }.getOrDefault(null to 0)
             return FolderEntry(
-                uri = zipUri,
+                uri = uri,
                 documentId = row.docId,
                 name = row.name,
-                cover = names.firstOrNull()?.let { ZipEntryRef(zipUri, it) },
-                imageCount = names.size,
+                cover = cover,
+                imageCount = count,
                 hasSubfolders = false,
                 isArchive = true,
                 lastModified = row.lastModified,
@@ -215,6 +264,39 @@ class SafScanner
                 }
             }
         }
+
+        /** content Uri 의 cbr/rar 을 열어 block 을 실행(junrar). */
+        private fun <T> readRar(
+            rarUri: Uri,
+            block: (Archive) -> T,
+        ): T {
+            val input =
+                context.contentResolver.openInputStream(rarUri)
+                    ?: error("cbr 을 열 수 없습니다: $rarUri")
+            return input.use { Archive(it).use { archive -> block(archive) } }
+        }
+
+        /** rar 안의 이미지 엔트리 이름을 자연 정렬해 반환. */
+        private fun rarImageEntryNames(archive: Archive): List<String> =
+            archive.fileHeaders
+                .asSequence()
+                .filter { !it.isDirectory && isImage(it.fileName, null) }
+                .map { it.fileName }
+                .sortedWith(naturalComparator)
+                .toList()
+
+        /** content Uri 의 PDF 를 PdfRenderer 로 열어 block 을 실행. */
+        private fun <T> readPdf(
+            pdfUri: Uri,
+            block: (PdfRenderer) -> T,
+        ): T {
+            val pfd =
+                context.contentResolver.openFileDescriptor(pdfUri, "r")
+                    ?: error("pdf 를 열 수 없습니다: $pdfUri")
+            return pfd.use { PdfRenderer(it).use { renderer -> block(renderer) } }
+        }
+
+        private fun ext(name: String): String = name.substringAfterLast('.', "").lowercase()
 
         private inline fun queryChildren(
             treeUri: Uri,

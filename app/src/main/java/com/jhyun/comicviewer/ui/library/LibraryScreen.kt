@@ -392,7 +392,7 @@ private fun DirectoryTab(
                         item(span = { GridItemSpan(maxLineSpan) }) { EmptyDirectoryMessage() }
                     }
                     items(cells, key = { it.documentId }) { entry ->
-                        if (entry.isComic) {
+                        if (entry.isComic || entry.isArchive) {
                             ComicCard(entry, onClick = { onPreview(entry) })
                         } else {
                             FolderCard(entry, onClick = { onBrowseInto(entry) })
@@ -406,7 +406,7 @@ private fun DirectoryTab(
                         item { EmptyDirectoryMessage() }
                     }
                     items(cells, key = { it.documentId }) { entry ->
-                        if (entry.isComic) {
+                        if (entry.isComic || entry.isArchive) {
                             ComicRow(entry, onClick = { onPreview(entry) })
                         } else {
                             FolderRow(entry, onClick = { onBrowseInto(entry) })

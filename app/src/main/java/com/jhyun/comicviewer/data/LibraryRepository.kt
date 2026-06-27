@@ -126,7 +126,7 @@ class LibraryRepositoryImpl
         ): List<ImageDoc> =
             withContext(Dispatchers.IO) {
                 if (entry.isArchive) {
-                    scanner.listZipImages(entry.uri)
+                    scanner.listArchiveImages(entry.uri, entry.name)
                 } else {
                     scanner.listImagesDirect(treeUri, entry.documentId)
                 }
