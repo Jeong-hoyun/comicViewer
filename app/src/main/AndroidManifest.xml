@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      저장소 권한 선언이 없는 것이 의도된 설계입니다.
+      Storage Access Framework(폴더 선택 + 영구 URI 권한)만 사용하므로
+      READ_EXTERNAL_STORAGE / MANAGE_EXTERNAL_STORAGE 가 필요 없습니다.
+      → Play 심사가 빠르고 권한 특별승인이 불필요합니다.
+    -->
+
+    <application
+        android:name=".ComicViewerApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ComicViewer">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ComicViewer">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

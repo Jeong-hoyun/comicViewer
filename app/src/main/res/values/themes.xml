@@ -1,0 +1,5 @@
+<resources>
+    <!-- 실제 테마는 Compose(ComicViewerTheme)에서 지정합니다.
+         여기서는 ActionBar 없는 베이스 테마만 둡니다. -->
+    <style name="Theme.ComicViewer" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
