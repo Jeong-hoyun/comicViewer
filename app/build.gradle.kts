@@ -80,6 +80,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.telephoto.zoomable.image.coil)
 
+    // 압축 만화(zip/cbz) 랜덤 액세스
+    implementation(libs.commons.compress)
+
     debugImplementation(libs.androidx.ui.tooling)
 
     // 단위 테스트 (Phase 1 하네스)

@@ -32,6 +32,8 @@ class LibraryViewModelTest {
 
     private fun image(name: String) = ImageDoc(uri("content://img/$name"), name)
 
+    // ImageDoc(model, name) — model 위치 인자로 Uri 전달.
+
     private fun folder(
         name: String,
         docId: String = name,
@@ -41,7 +43,7 @@ class LibraryViewModelTest {
         uri = uri("content://f/$docId"),
         documentId = docId,
         name = name,
-        coverUri = uri("content://c/$docId"),
+        cover = uri("content://c/$docId"),
         imageCount = images,
         hasSubfolders = sub,
     )

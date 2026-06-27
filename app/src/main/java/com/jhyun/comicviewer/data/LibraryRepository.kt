@@ -31,10 +31,10 @@ interface LibraryRepository {
         parentDocId: String?,
     ): DirectoryListing
 
-    /** 특정 하위 폴더(docId)의 이미지 페이지를 재귀로 스캔합니다. */
+    /** 만화 1권(폴더 또는 zip/cbz)의 이미지 페이지를 반환합니다. */
     suspend fun listPages(
         treeUri: Uri,
-        docId: String,
+        entry: FolderEntry,
     ): List<ImageDoc>
 }
 
@@ -88,9 +88,13 @@ class LibraryRepositoryImpl
 
         override suspend fun listPages(
             treeUri: Uri,
-            docId: String,
+            entry: FolderEntry,
         ): List<ImageDoc> =
             withContext(Dispatchers.IO) {
-                scanner.listImages(treeUri, docId)
+                if (entry.isArchive) {
+                    scanner.listZipImages(entry.uri)
+                } else {
+                    scanner.listImages(treeUri, entry.documentId)
+                }
             }
     }

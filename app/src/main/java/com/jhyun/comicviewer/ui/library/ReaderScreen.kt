@@ -394,7 +394,7 @@ private fun PageUnit(
         val page = pages[unit[0]]
         if (zoomable) {
             ZoomableAsyncImage(
-                model = page.uri,
+                model = page.model,
                 contentDescription = page.name,
                 contentScale = singleScale,
                 modifier = modifier,
@@ -402,7 +402,7 @@ private fun PageUnit(
             )
         } else {
             AsyncImage(
-                model = page.uri,
+                model = page.model,
                 contentDescription = page.name,
                 contentScale = singleScale,
                 modifier = modifier.noRippleClickable(onTap),
@@ -413,7 +413,7 @@ private fun PageUnit(
         Row(modifier = modifier.noRippleClickable(onTap)) {
             ordered.forEach { index ->
                 AsyncImage(
-                    model = pages[index].uri,
+                    model = pages[index].model,
                     contentDescription = pages[index].name,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.weight(1f).fillMaxHeight(),

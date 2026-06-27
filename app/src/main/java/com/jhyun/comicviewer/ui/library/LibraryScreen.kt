@@ -401,7 +401,7 @@ private fun ComicRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverThumbnail(
-            coverUri = entry.coverUri,
+            cover = entry.cover,
             modifier =
                 Modifier
                     .width(52.dp)
@@ -421,7 +421,7 @@ private fun ComicRow(
 
 @Composable
 private fun CoverThumbnail(
-    coverUri: Uri?,
+    cover: Any?,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -433,9 +433,9 @@ private fun CoverThumbnail(
                 ),
         contentAlignment = Alignment.Center,
     ) {
-        if (coverUri != null) {
+        if (cover != null) {
             AsyncImage(
-                model = coverUri,
+                model = cover,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -463,7 +463,7 @@ private fun PreviewDialog(
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CoverThumbnail(
-                    coverUri = entry.coverUri,
+                    cover = entry.cover,
                     modifier =
                         Modifier
                             .fillMaxWidth()

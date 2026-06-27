@@ -13,6 +13,7 @@ room = "2.6.1"
 coil = "2.7.0"
 telephoto = "0.13.0"
 documentfile = "1.0.1"
+commonsCompress = "1.27.1"
 ktlint = "12.1.1"
 junit = "4.13.2"
 coroutinesTest = "1.8.1"
@@ -44,6 +45,7 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
 telephoto-zoomable-image-coil = { group = "me.saket.telephoto", name = "zoomable-image-coil", version.ref = "telephoto" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }

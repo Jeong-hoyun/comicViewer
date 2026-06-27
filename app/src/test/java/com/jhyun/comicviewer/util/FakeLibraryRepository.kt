@@ -2,6 +2,7 @@ package com.jhyun.comicviewer.util
 
 import android.net.Uri
 import com.jhyun.comicviewer.data.DirectoryListing
+import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.LibraryRepository
 import com.jhyun.comicviewer.data.local.SourceFolderEntity
@@ -44,6 +45,6 @@ class FakeLibraryRepository : LibraryRepository {
 
     override suspend fun listPages(
         treeUri: Uri,
-        docId: String,
+        entry: FolderEntry,
     ): List<ImageDoc> = pages
 }

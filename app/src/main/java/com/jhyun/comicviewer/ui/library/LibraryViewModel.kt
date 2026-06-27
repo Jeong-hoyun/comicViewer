@@ -124,7 +124,7 @@ class LibraryViewModel
                 uri = listing.folderUri,
                 documentId = listing.folderDocId,
                 name = level.title,
-                coverUri = listing.images.first().uri,
+                cover = listing.images.first().model,
                 imageCount = listing.images.size,
                 hasSubfolders = false,
             )
@@ -141,7 +141,7 @@ class LibraryViewModel
         fun openComic(entry: FolderEntry) {
             val treeUri = root ?: return
             viewModelScope.launch {
-                val pages = repository.listPages(treeUri, entry.documentId)
+                val pages = repository.listPages(treeUri, entry)
                 _reader.value = ReaderState(entry.name, pages)
                 _preview.value = null
             }
