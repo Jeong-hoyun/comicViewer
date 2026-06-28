@@ -8,6 +8,7 @@ import com.jhyun.comicviewer.data.DirectoryListing
 import com.jhyun.comicviewer.data.FolderEntry
 import com.jhyun.comicviewer.data.ImageDoc
 import com.jhyun.comicviewer.data.local.BookmarkEntity
+import com.jhyun.comicviewer.data.local.ReadingProgressEntity
 import com.jhyun.comicviewer.util.FakeLibraryRepository
 import com.jhyun.comicviewer.util.FakeSettingsStore
 import com.jhyun.comicviewer.util.MainDispatcherRule
@@ -218,5 +219,47 @@ class LibraryViewModelTest {
         )
 
         assertThat(vm.reader.value!!.startPage).isEqualTo(6)
+    }
+
+    @Test
+    fun `히스토리 항목을 삭제하면 진행도를 지운다`() {
+        val vm = viewModel()
+        val item =
+            ReadingProgressEntity(
+                comicUri = "content://f/sa",
+                treeUri = "content://tree/root",
+                docId = "sa",
+                name = "SeriesA",
+                isArchive = false,
+                lastPage = 3,
+                pageCount = 10,
+                updatedAt = 0L,
+            )
+
+        vm.removeHistory(item)
+
+        assertThat(repo.deletedProgress).containsExactly("content://f/sa")
+    }
+
+    @Test
+    fun `책갈피 항목을 삭제하면 목록에서 제거된다`() {
+        val bm =
+            BookmarkEntity(
+                id = 1,
+                comicUri = "content://f/sa",
+                treeUri = "content://tree/root",
+                docId = "sa",
+                name = "SeriesA",
+                isArchive = false,
+                page = 2,
+                createdAt = 0L,
+            )
+        repo.bookmarksFlow.value = listOf(bm)
+        val vm = viewModel()
+
+        vm.removeBookmark(bm)
+
+        assertThat(repo.deletedBookmarks).containsExactly(bm)
+        assertThat(repo.bookmarksFlow.value).isEmpty()
     }
 }
