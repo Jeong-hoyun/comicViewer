@@ -9,7 +9,6 @@ import com.jhyun.comicviewer.core.NaturalOrderComparator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipFile
-import java.io.FileInputStream
 import javax.inject.Inject
 
 /** zip/cbz 내부의 한 이미지 엔트리. Coil 커스텀 Fetcher 로 로드됩니다. */
@@ -248,22 +247,11 @@ class SafScanner
             return out.sortedWith(naturalComparator)
         }
 
-        /** content Uri 의 zip 을 ParcelFileDescriptor 채널로 열어(랜덤 액세스) block 을 실행. */
+        /** zip 을 [ArchivePageCache] 로 열어(랜덤 액세스, 열린 아카이브 재사용) block 을 실행. */
         private fun <T> readZip(
             zipUri: Uri,
             block: (ZipFile) -> T,
-        ): T {
-            val pfd =
-                context.contentResolver.openFileDescriptor(zipUri, "r")
-                    ?: error("zip 을 열 수 없습니다: $zipUri")
-            return pfd.use {
-                FileInputStream(it.fileDescriptor).channel.use { channel ->
-                    ZipFile.builder().setSeekableByteChannel(channel).get().use { zip ->
-                        block(zip)
-                    }
-                }
-            }
-        }
+        ): T = ArchivePageCache.withZip(context, zipUri, block)
 
         /** content Uri 의 cbr/rar 을 열어 block 을 실행(junrar). */
         private fun <T> readRar(
