@@ -80,6 +80,11 @@ class LibraryViewModel
                 .map { it?.let { n -> runCatching { PageLayout.valueOf(n) }.getOrNull() } ?: PageLayout.Single }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PageLayout.Single)
 
+        /** 볼륨키 페이지 넘김 사용 여부(영속). */
+        val volumeKeyPaging: StateFlow<Boolean> =
+            settings.volumeKeyPaging
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
         fun setSortOrder(value: SortOrder) {
             viewModelScope.launch { settings.setSortOrder(value) }
         }
@@ -90,6 +95,10 @@ class LibraryViewModel
 
         fun setReaderLayout(value: PageLayout) {
             viewModelScope.launch { settings.setReaderLayout(value.name) }
+        }
+
+        fun setVolumeKeyPaging(enabled: Boolean) {
+            viewModelScope.launch { settings.setVolumeKeyPaging(enabled) }
         }
 
         val folders: StateFlow<List<SourceFolderEntity>> =

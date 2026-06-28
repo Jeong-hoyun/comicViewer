@@ -147,6 +147,7 @@ fun ReaderScreen(
     initialLayout: PageLayout = PageLayout.Single,
     onDirectionChange: (ReadingDirection) -> Unit = {},
     onLayoutChange: (PageLayout) -> Unit = {},
+    volumeKeyPaging: Boolean = true,
 ) {
     val pages = state.pages
     val scope = rememberCoroutineScope()
@@ -293,7 +294,7 @@ fun ReaderScreen(
                     .focusRequester(focusRequester)
                     .focusable()
                     .onKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown) {
+                        if (volumeKeyPaging && event.type == KeyEventType.KeyDown) {
                             when (event.key) {
                                 Key.VolumeDown -> {
                                     goNext()

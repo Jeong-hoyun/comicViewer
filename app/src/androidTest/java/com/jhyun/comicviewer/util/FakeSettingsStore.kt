@@ -9,10 +9,12 @@ class FakeSettingsStore : SettingsStore {
     private val sort = MutableStateFlow(SortOrder.NameAsc)
     private val direction = MutableStateFlow<String?>(null)
     private val layout = MutableStateFlow<String?>(null)
+    private val volumePaging = MutableStateFlow(true)
 
     override val sortOrder = sort
     override val readerDirection = direction
     override val readerLayout = layout
+    override val volumeKeyPaging = volumePaging
 
     override suspend fun setSortOrder(value: SortOrder) {
         sort.value = value
@@ -24,5 +26,9 @@ class FakeSettingsStore : SettingsStore {
 
     override suspend fun setReaderLayout(name: String) {
         layout.value = name
+    }
+
+    override suspend fun setVolumeKeyPaging(enabled: Boolean) {
+        volumePaging.value = enabled
     }
 }

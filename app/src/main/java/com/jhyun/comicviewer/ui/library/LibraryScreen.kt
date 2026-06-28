@@ -108,11 +108,13 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val readerDirection by viewModel.readerDirection.collectAsStateWithLifecycle()
     val readerLayout by viewModel.readerLayout.collectAsStateWithLifecycle()
+    val volumeKeyPaging by viewModel.volumeKeyPaging.collectAsStateWithLifecycle()
 
     var selectedTab by rememberSaveable { mutableIntStateOf(LibraryTab.Storage.ordinal) }
     var overflowOpen by remember { mutableStateOf(false) }
     var sortOpen by remember { mutableStateOf(false) }
     var gridMode by rememberSaveable { mutableStateOf(true) }
+    var showSettings by remember { mutableStateOf(false) }
 
     val pickFolder =
         rememberLauncherForActivityResult(
@@ -134,8 +136,8 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
             topBar = {
                 TopAppBar(
                     navigationIcon = {
-                        IconButton(onClick = { /* TODO: 내비게이션 드로어 (로드맵 5번) */ }) {
-                            Icon(Icons.Default.Menu, contentDescription = "메뉴")
+                        IconButton(onClick = { showSettings = true }) {
+                            Icon(Icons.Default.Menu, contentDescription = "설정")
                         }
                     },
                     title = { Text("Paneo") },
@@ -272,6 +274,19 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                 initialLayout = readerLayout,
                 onDirectionChange = viewModel::setReaderDirection,
                 onLayoutChange = viewModel::setReaderLayout,
+                volumeKeyPaging = volumeKeyPaging,
+            )
+        }
+
+        if (showSettings) {
+            SettingsScreen(
+                readerDirection = readerDirection,
+                readerLayout = readerLayout,
+                volumeKeyPaging = volumeKeyPaging,
+                onDirectionChange = viewModel::setReaderDirection,
+                onLayoutChange = viewModel::setReaderLayout,
+                onVolumeKeyPagingChange = viewModel::setVolumeKeyPaging,
+                onClose = { showSettings = false },
             )
         }
     }
