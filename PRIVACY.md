@@ -33,7 +33,7 @@ _최종 수정일 / Last updated: 2026-06-28_
 앱은 만화/이미지 콘텐츠를 제공하지 않는 **뷰어**입니다. 사용자는 본인이 소유·보유한 파일만 열어야 합니다.
 
 ### 7. 문의
-- 이메일: **<이메일 주소 입력>**
+- 이메일: **ghdbs125@gmail.com**
 
 ---
 
@@ -62,4 +62,4 @@ The app collects no personal data and is safe for children.
 Paneo is a **viewer** and provides no comic/image content. Open only files you own.
 
 ### 7. Contact
-- Email: **<your email>**
+- Email: **ghdbs125@gmail.com**
