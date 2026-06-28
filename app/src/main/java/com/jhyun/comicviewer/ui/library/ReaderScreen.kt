@@ -18,9 +18,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -77,6 +80,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.jhyun.comicviewer.data.ImageDoc
@@ -174,8 +178,27 @@ fun ReaderScreen(
         }.coerceIn(0, (units.size - 1).coerceAtLeast(0))
     val currentPageIndex = units.getOrNull(currentUnit)?.firstOrNull() ?: 0
 
-    // 현재 페이지가 바뀌면 진행도 보고.
-    LaunchedEffect(currentPageIndex) { onProgress(currentPageIndex) }
+    // 하단 썸네일 필름스트립 스크롤 상태.
+    val filmstripState = rememberLazyListState()
+
+    // 특정 페이지로 이동(시크바·필름스트립 공용).
+    val jumpToPage: (Int) -> Unit = { page ->
+        val target = page.coerceIn(0, pages.lastIndex)
+        val targetUnit = units.indexOfFirst { it.contains(target) }.coerceAtLeast(0)
+        scope.launch {
+            when {
+                direction.isVertical -> verticalState.scrollToItem(targetUnit)
+                direction.isSmooth -> smoothState.scrollToItem(targetUnit)
+                else -> pagerState.scrollToPage(targetUnit)
+            }
+        }
+    }
+
+    // 현재 페이지가 바뀌면 진행도 보고 + 필름스트립을 현재 페이지로 따라가게.
+    LaunchedEffect(currentPageIndex) {
+        onProgress(currentPageIndex)
+        if (currentPageIndex in pages.indices) filmstripState.animateScrollToItem(currentPageIndex)
+    }
 
     // --- 윈도우 효과: 리더를 벗어나면 원복 ---
     LaunchedEffect(autoBrightness, manualBrightness) {
@@ -340,6 +363,44 @@ fun ReaderScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
                 Column(modifier = Modifier.fillMaxWidth().background(scrim())) {
+                    // 페이지 썸네일 필름스트립: 주변 페이지 미리보기 + 탭하면 이동.
+                    if (pages.size > 1) {
+                        LazyRow(
+                            state = filmstripState,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            items(pages.size) { i ->
+                                val isCurrent = i == currentPageIndex
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .width(48.dp)
+                                                .aspectRatio(0.7f)
+                                                .border(
+                                                    width = if (isCurrent) 2.dp else 1.dp,
+                                                    color = if (isCurrent) Color(0xFF2196F3) else Color(0x66FFFFFF),
+                                                    shape = RoundedCornerShape(4.dp),
+                                                ).clickable { jumpToPage(i) },
+                                    ) {
+                                        AsyncImage(
+                                            model = pages[i].model,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+                                    Text(
+                                        "${i + 1}",
+                                        color = if (isCurrent) Color(0xFF2196F3) else Color.White,
+                                        fontSize = 10.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Text(
                         "${currentPageIndex + 1} / ${pages.size}",
                         color = Color.White,
@@ -348,17 +409,7 @@ fun ReaderScreen(
                     if (pages.size > 1) {
                         Slider(
                             value = currentPageIndex.toFloat(),
-                            onValueChange = { value ->
-                                val targetPage = value.roundToInt().coerceIn(0, pages.lastIndex)
-                                val targetUnit = units.indexOfFirst { it.contains(targetPage) }.coerceAtLeast(0)
-                                scope.launch {
-                                    when {
-                                        direction.isVertical -> verticalState.scrollToItem(targetUnit)
-                                        direction.isSmooth -> smoothState.scrollToItem(targetUnit)
-                                        else -> pagerState.scrollToPage(targetUnit)
-                                    }
-                                }
-                            },
+                            onValueChange = { jumpToPage(it.roundToInt()) },
                             valueRange = 0f..pages.lastIndex.toFloat(),
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                         )
