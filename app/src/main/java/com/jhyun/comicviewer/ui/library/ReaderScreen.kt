@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -72,9 +73,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -194,6 +204,20 @@ fun ReaderScreen(
         }
     }
 
+    // 보기 단위 기준 이동(탭존·볼륨키). 부드럽게 애니메이션.
+    val scrollToUnit: (Int) -> Unit = { unit ->
+        val target = unit.coerceIn(0, (units.size - 1).coerceAtLeast(0))
+        scope.launch {
+            when {
+                direction.isVertical -> verticalState.animateScrollToItem(target)
+                direction.isSmooth -> smoothState.animateScrollToItem(target)
+                else -> pagerState.animateScrollToPage(target)
+            }
+        }
+    }
+    val goNext = { scrollToUnit(currentUnit + 1) }
+    val goPrev = { scrollToUnit(currentUnit - 1) }
+
     // 현재 페이지가 바뀌면 진행도 보고 + 필름스트립을 현재 페이지로 따라가게.
     LaunchedEffect(currentPageIndex) {
         onProgress(currentPageIndex)
@@ -238,6 +262,21 @@ fun ReaderScreen(
     val foreground = if (background == Color.White) Color.Black else Color.White
     val toggleOverlay = { overlayVisible = !overlayVisible }
 
+    // 탭존: 좌/우 1/3 → 이전·다음(읽기 방향 반영), 가운데 → 오버레이.
+    // offset 이 null(세로/부드러운 모드 등)이면 항상 오버레이 토글.
+    var contentWidthPx by remember { mutableIntStateOf(0) }
+    val onContentTap: (Offset?) -> Unit = { offset ->
+        val w = contentWidthPx
+        when {
+            offset == null || w == 0 -> toggleOverlay()
+            offset.x < w / 3f -> if (direction.isRtl) goNext() else goPrev()
+            offset.x > w * 2f / 3f -> if (direction.isRtl) goPrev() else goNext()
+            else -> toggleOverlay()
+        }
+    }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
     val singleScale =
         when {
             layout == PageLayout.Off -> ContentScale.Fit
@@ -246,7 +285,31 @@ fun ReaderScreen(
         }
 
     Surface(modifier = Modifier.fillMaxSize(), color = background) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .onSizeChanged { contentWidthPx = it.width }
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown) {
+                            when (event.key) {
+                                Key.VolumeDown -> {
+                                    goNext()
+                                    true
+                                }
+                                Key.VolumeUp -> {
+                                    goPrev()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else {
+                            false
+                        }
+                    },
+        ) {
             if (pages.isEmpty()) {
                 Text("페이지가 없습니다.", color = foreground, modifier = Modifier.align(Alignment.Center))
             } else {
@@ -261,7 +324,7 @@ fun ReaderScreen(
                                     zoomable = false,
                                     singleScale = singleScale,
                                     modifier = Modifier.fillMaxWidth(),
-                                    onTap = toggleOverlay,
+                                    onTap = onContentTap,
                                 )
                             }
                         }
@@ -280,7 +343,7 @@ fun ReaderScreen(
                                     zoomable = false,
                                     singleScale = singleScale,
                                     modifier = Modifier.fillParentMaxWidth().fillMaxHeight(),
-                                    onTap = toggleOverlay,
+                                    onTap = onContentTap,
                                 )
                             }
                         }
@@ -298,7 +361,7 @@ fun ReaderScreen(
                                 zoomable = true,
                                 singleScale = singleScale,
                                 modifier = Modifier.fillMaxSize(),
-                                onTap = toggleOverlay,
+                                onTap = onContentTap,
                             )
                         }
                 }
@@ -469,7 +532,7 @@ private fun PageUnit(
     zoomable: Boolean,
     singleScale: ContentScale,
     modifier: Modifier,
-    onTap: () -> Unit,
+    onTap: (Offset?) -> Unit,
 ) {
     if (unit.size == 1) {
         val page = pages[unit[0]]
@@ -479,19 +542,19 @@ private fun PageUnit(
                 contentDescription = page.name,
                 contentScale = singleScale,
                 modifier = modifier,
-                onClick = { onTap() },
+                onClick = { onTap(it) },
             )
         } else {
             AsyncImage(
                 model = page.model,
                 contentDescription = page.name,
                 contentScale = singleScale,
-                modifier = modifier.noRippleClickable(onTap),
+                modifier = modifier.noRippleClickable { onTap(null) },
             )
         }
     } else {
         val ordered = if (isRtl) unit.reversed() else unit
-        Row(modifier = modifier.noRippleClickable(onTap)) {
+        Row(modifier = modifier.noRippleClickable { onTap(null) }) {
             ordered.forEach { index ->
                 AsyncImage(
                     model = pages[index].model,
