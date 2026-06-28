@@ -3,14 +3,21 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 책 모양 placeholder 아이콘 (흰색) -->
+
+    <!-- Paneo: 만화 페이지의 "칸(panel)" 레이아웃. 흰 패널 3칸, 사이 거터로 배경(블루) 노출 -->
+
+    <!-- 위 큰 칸 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M36,34 h36 a3,3 0 0 1 3,3 v34 a3,3 0 0 1 -3,3 h-36 a3,3 0 0 1 -3,-3 v-34 a3,3 0 0 1 3,-3 z" />
+        android:pathData="M35,26 H73 a3,3 0 0 1 3,3 V45 a3,3 0 0 1 -3,3 H35 a3,3 0 0 1 -3,-3 V29 a3,3 0 0 1 3,-3 Z" />
+
+    <!-- 아래 왼쪽 칸 -->
     <path
-        android:fillColor="#1F2933"
-        android:pathData="M54,34 h2 v40 h-2 z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,52 H49 a3,3 0 0 1 3,3 V79 a3,3 0 0 1 -3,3 H35 a3,3 0 0 1 -3,-3 V55 a3,3 0 0 1 3,-3 Z" />
+
+    <!-- 아래 오른쪽 칸 -->
     <path
-        android:fillColor="#1F2933"
-        android:pathData="M40,42 h10 v3 h-10 z M40,50 h10 v3 h-10 z M58,42 h10 v3 h-10 z M58,50 h10 v3 h-10 z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M59,52 H73 a3,3 0 0 1 3,3 V79 a3,3 0 0 1 -3,3 H59 a3,3 0 0 1 -3,-3 V55 a3,3 0 0 1 3,-3 Z" />
 </vector>

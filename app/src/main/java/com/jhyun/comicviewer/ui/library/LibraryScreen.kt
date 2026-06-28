@@ -137,7 +137,7 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                             Icon(Icons.Default.Menu, contentDescription = "메뉴")
                         }
                     },
-                    title = { Text("코믹뷰어") },
+                    title = { Text("Paneo") },
                     actions = {
                         IconButton(onClick = { pickFolder.launch(null) }) {
                             Icon(Icons.Default.Add, contentDescription = "폴더 추가")
