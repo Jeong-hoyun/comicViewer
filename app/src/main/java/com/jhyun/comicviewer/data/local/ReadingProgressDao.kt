@@ -16,4 +16,7 @@ interface ReadingProgressDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(progress: ReadingProgressEntity)
+
+    @Query("DELETE FROM reading_progress WHERE comicUri = :comicUri")
+    suspend fun delete(comicUri: String)
 }

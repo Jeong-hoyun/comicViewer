@@ -64,6 +64,12 @@ interface LibraryRepository {
         entry: FolderEntry,
         page: Int,
     ): Boolean
+
+    /** 히스토리(읽기 진행도) 항목 1개 삭제. */
+    suspend fun deleteProgress(comicUri: String)
+
+    /** 책갈피 1개 삭제. */
+    suspend fun deleteBookmark(bookmark: BookmarkEntity)
 }
 
 @Singleton
@@ -177,5 +183,13 @@ class LibraryRepositoryImpl
                 )
                 true
             }
+        }
+
+        override suspend fun deleteProgress(comicUri: String) {
+            progressDao.delete(comicUri)
+        }
+
+        override suspend fun deleteBookmark(bookmark: BookmarkEntity) {
+            bookmarkDao.delete(bookmark)
         }
     }

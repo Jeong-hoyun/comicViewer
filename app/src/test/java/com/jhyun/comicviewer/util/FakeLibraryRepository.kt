@@ -108,4 +108,16 @@ class FakeLibraryRepository : LibraryRepository {
             ),
         )
     }
+
+    val deletedProgress = mutableListOf<String>()
+    val deletedBookmarks = mutableListOf<BookmarkEntity>()
+
+    override suspend fun deleteProgress(comicUri: String) {
+        deletedProgress.add(comicUri)
+    }
+
+    override suspend fun deleteBookmark(bookmark: BookmarkEntity) {
+        deletedBookmarks.add(bookmark)
+        bookmarksFlow.value = bookmarksFlow.value - bookmark
+    }
 }

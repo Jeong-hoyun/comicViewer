@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
@@ -238,12 +239,14 @@ fun LibraryScreen(viewModel: LibraryViewModel = hiltViewModel()) {
                         HistoryTab(
                             items = recentlyRead,
                             onOpen = viewModel::openFromHistory,
+                            onRemove = viewModel::removeHistory,
                         )
 
                     LibraryTab.Bookmark ->
                         BookmarkTab(
                             items = bookmarks,
                             onOpen = viewModel::openBookmark,
+                            onRemove = viewModel::removeBookmark,
                         )
                 }
             }
@@ -281,6 +284,24 @@ private fun StorageTab(
     onRemove: (SourceFolderEntity) -> Unit,
     onAdd: () -> Unit,
 ) {
+    var pendingRemove by remember { mutableStateOf<SourceFolderEntity?>(null) }
+    pendingRemove?.let { folder ->
+        AlertDialog(
+            onDismissRequest = { pendingRemove = null },
+            title = { Text("폴더 제거") },
+            text = { Text("‘${folder.displayName}’ 를 라이브러리에서 제거할까요?\n(기기의 실제 파일은 삭제되지 않습니다.)") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemove(folder)
+                    pendingRemove = null
+                }) { Text("제거") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemove = null }) { Text("취소") }
+            },
+        )
+    }
+
     if (folders.isEmpty()) {
         PlaceholderTab(
             icon = Icons.Default.Folder,
@@ -317,7 +338,7 @@ private fun StorageTab(
                 },
                 leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
                 trailingContent = {
-                    IconButton(onClick = { onRemove(folder) }) {
+                    IconButton(onClick = { pendingRemove = folder }) {
                         Icon(Icons.Default.Delete, contentDescription = "제거")
                     }
                 },
@@ -657,6 +678,7 @@ private fun PreviewDialog(
 private fun HistoryTab(
     items: List<ReadingProgressEntity>,
     onOpen: (ReadingProgressEntity) -> Unit,
+    onRemove: (ReadingProgressEntity) -> Unit,
 ) {
     if (items.isEmpty()) {
         PlaceholderTab(
@@ -672,6 +694,11 @@ private fun HistoryTab(
                 headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 supportingContent = { Text("${item.lastPage + 1} / ${item.pageCount} 페이지") },
                 leadingContent = { Icon(Icons.Default.History, contentDescription = null) },
+                trailingContent = {
+                    IconButton(onClick = { onRemove(item) }) {
+                        Icon(Icons.Default.Close, contentDescription = "기록 삭제")
+                    }
+                },
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -687,6 +714,7 @@ private fun HistoryTab(
 private fun BookmarkTab(
     items: List<BookmarkEntity>,
     onOpen: (BookmarkEntity) -> Unit,
+    onRemove: (BookmarkEntity) -> Unit,
 ) {
     if (items.isEmpty()) {
         PlaceholderTab(
@@ -702,6 +730,11 @@ private fun BookmarkTab(
                 headlineContent = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 supportingContent = { Text("${item.page + 1} 페이지") },
                 leadingContent = { Icon(Icons.Default.Bookmark, contentDescription = null) },
+                trailingContent = {
+                    IconButton(onClick = { onRemove(item) }) {
+                        Icon(Icons.Default.Close, contentDescription = "책갈피 삭제")
+                    }
+                },
                 modifier =
                     Modifier
                         .fillMaxWidth()

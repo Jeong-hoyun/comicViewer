@@ -304,4 +304,12 @@ class LibraryViewModel
         fun removeFolder(folder: SourceFolderEntity) {
             viewModelScope.launch { repository.removeFolder(folder) }
         }
+
+        fun removeHistory(item: ReadingProgressEntity) {
+            viewModelScope.launch { repository.deleteProgress(item.comicUri) }
+        }
+
+        fun removeBookmark(item: BookmarkEntity) {
+            viewModelScope.launch { repository.deleteBookmark(item) }
+        }
     }

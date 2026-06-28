@@ -62,4 +62,8 @@ class FakeLibraryRepository : LibraryRepository {
         entry: FolderEntry,
         page: Int,
     ): Boolean = true
+
+    override suspend fun deleteProgress(comicUri: String) = Unit
+
+    override suspend fun deleteBookmark(bookmark: BookmarkEntity) = Unit
 }
