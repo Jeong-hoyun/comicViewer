@@ -86,6 +86,10 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
+          # GitHub 러너엔 하드웨어 GPU 가 없으므로 소프트웨어 렌더(swiftshader) 강제 → 부팅 멈춤 방지
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none -camera-front none
+          emulator-boot-timeout: 900
+          force-avd-creation: true
           script: ./gradlew connectedDebugAndroidTest
 
       - name: 계측 테스트 리포트 업로드
